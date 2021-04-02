@@ -12,6 +12,7 @@ library( randomForest )
 # Folder with all *.csv files with data about IoT attacks
 data_folder <- "data"
 data_file <- file.path( data_folder, "data.csv" )
+datafile_url <- "https://www118.zippyshare.com/d/NDCWjCMp/613861/data.zip"
 df <- NULL
 
 # Function to create data frame from *.csv files in folder
@@ -80,12 +81,20 @@ if( file.exists( data_file ) ) {
   df <- createDataFrame( device )
 
   if (nrow( df ) > 0 ) {
+    df <- df %>% select(-device)
+    df$botnet <- as.factor( df$botnet )
     write.csv( df, file = data_file, row.names = FALSE )
   }
 }
 
+
+# if data frame has column 'device', remove it
+if( 'device' %in% colnames( df) ) {
+  df <- df %>% select( - device )
+}
 str( df )
 dim(df)
+colnames <- colnames( df )
 
 # Sample 
 #sample_size <- 5
@@ -312,12 +321,12 @@ cf <- confusionMatrix(y_hat, test_set_levels )
 cf$overall["Accuracy"]
 
 # NO MATRICES, WORKS SLOWLY, faster with small dataset
-# Try to use their approach: the train set should contain only benign traffic.
+# Try to use their approach: the train set should contain only benign_traffic traffic.
 #tmp <- df %>% select(-device)
 
 
 # As in source - train set is just from beging traffic
-#n_benign <- tmp %>% filter( botnet == 'benign_traffic' ) %>% nrow() * 2/3
+#n_benign <- tmp %>% filter( botnet == 'benign' ) %>% nrow() * 2/3
 #train_set <- tmp[ 1:n_benign, ]
 #test_set <- tmp[ (n_benign + 1) : nrow(tmp), ]
 
