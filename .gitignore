@@ -38,5 +38,13 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 
-# Description file
-N_BaIoT_dataset_description_v1.txt
+# Project files
+data/Danmini_Doorbell
+data/Ennio_Doorbell
+data/Philips_B120N10_Baby_Monitor
+data/Provision_PT_737E_Security_Camera
+data/Provision_PT_838_Security_Camera
+data/Samsung_SNH_1011_N_Webcam
+data/SimpleHome_XCS7_1002_WHT_Security_Camera
+data/SimpleHome_XCS7_1003_WHT_Security_Camera
+data.csv
