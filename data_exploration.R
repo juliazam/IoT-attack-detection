@@ -3,37 +3,38 @@ if ( !require( tidyverse )) install.packages( "tidyverse", repos = "http://cran.
 library( tidyverse )
 library( rvest )
 library( ggplot2 )
+library(tools)
 
-# Data archive url
-data_url <- "https://www118.zippyshare.com/d/NDCWjCMp/613861/data.zip"
-
-# Data file folder
+# Folder with all IoT attacks data files from all devices
 data_folder <- "data"
 
-# Data file name
-data_file <- file.path( data_folder, "data.csv" )
-
-# Data frame to explore
+# Variable for data frame
 df <- NULL
 
-# Error messages
-error_download <- "Can't download data file. Please, follow instruction to download it from UCI Machine Learning Repository."
-
-# If data file is exists, read from it 
-if( file.exists( data_file ) ) {
-  df <- read.csv( data_file, as.is = TRUE )
-} else { # Download from url (file size is 200MB, download will take a time)
-  zipfile <- paste( data_folder, "data.zip", sep = "/" )
-  res <- download.file( data_url, zipfile, mode = "wb" )
-  if ( !res ) {
-    unzip( zipfile, exdir = data_folder )
-    df <- read.csv( data_file, as.is = TRUE )
-    file.remove( zipfile )
-  } else {
-    print( error_download )
+# Read data from the sampler data file, that contains 1000 rows for each 'botnet'
+readDataSample <- function() {
+  
+  # All IoT attacks data gathered in one file
+  data_file <- file.path( data_folder, "data_sample.csv" )
+  
+  # Data file url on GitHub
+  datafile_url <- "https://github.com/juliazam/IoT-attack-detection/raw/master/data/data_sample.csv"
+  
+  # If data file doesn't exist in local folder, download it 
+  if( ! file.exists( data_file ) ) {
+    
+    res <- download.file( datafile_url, data_file, mode = "wb" )
+    
   }
   
+  print( "Reading data from data file.")
+  df <- read.csv( data_file, as.is = TRUE )
+  
+  return( df )
 }
+
+# Read existing data
+df <- readDataSample()
 
 # If data frame was successfully loaded
 if( !is.null( df ) ) {
@@ -270,4 +271,7 @@ if( !is.null( df ) ) {
   # All explorations show that I can use weight, mean and covariance to make 
   # a decision how to separate benign traffic from attacks, and remove other 
   # statistic parameters if I need to reduce data frame (or matrix) dimension.
+  
+  # Clear global environment
+  rm( df, tmp, error, colnames, data_file, data_folder, data_url, pattern )
 }

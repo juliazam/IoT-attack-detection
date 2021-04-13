@@ -1,7 +1,7 @@
 ---
-title: "Column data exploration"
-author: "Yulia Zamyatins"
-date: "3/29/2021"
+title: "detection_of_IoT_botnet_attacks_N_BaIoT Data Set exploration"
+author: "Yulia Zamyatina"
+date: "April, 2021"
 output: pdf_document
 ---
 
@@ -9,628 +9,314 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# IoT
-
 ```{r include = FALSE, message = FALSE, warning = FALSE}
 # Install and load required libraries
 if ( !require( tidyverse )) install.packages( "tidyverse", repos = "http://cran.us.r-project.org" )
 library( tidyverse )
-library(rvest)
-library(ggplot2)
-library(reshape2)
+library( rvest )
+library( ggplot2 )
+library( tools )
 
-# Folder with all *.csv files with data about IoT attacks
+# Folder with all IoT attacks data files from all devices
 data_folder <- "data"
-data_file <- file.path( data_folder, "data.csv" )
+
+# Variable for data frame
 df <- NULL
 
-# Function to create data frame from *.csv files in folder
-# d - device
-createDataFrame <- function( d ) {
-  folder <- paste( data_folder, d, sep = "/" )
-  files <- list.files( folder )
+# Read data from the sampler data file, that contains 1000 rows for each 'botnet'
+readDataSample <- function() {
   
-  for( i in 1:length( files ) ) {
-    print(i)
-    file <- files[ i ]
+  # All IoT attacks data gathered in one file
+  data_file <- file.path( data_folder, "data_sample.csv" )
+  
+  # Data file url on GitHub
+  datafile_url <- "https://github.com/juliazam/IoT-attack-detection/raw/master/data/data_sample.csv"
+  
+  # If data file doesn't exist in local folder, download it 
+  if( ! file.exists( data_file ) ) {
     
-    # Use file name as botnet name
-    name <- substr( file, 1, nchar( file ) - 4 )
+    res <- download.file( datafile_url, data_file, mode = "wb" )
     
-    # Create full path to the data file
-    file <- paste( folder, file, sep = "/")
-    
-    # Read data file
-    tmp <- read.csv( file, as.is = TRUE )
-    
-    # Create data frame with information about device and botnet
-    y <- data.frame( device = d, botnet = name )
-    
-    # Join both data frames
-    tmp <- left_join( y, tmp, by = character() )
-    
-    if( exists( 'df' ) && is.data.frame( get( 'df' ) ) ) {
-      # Add rows from tmp file to data frame
-      df <<- add_row( df, tmp )
-    } else {
-      # Create data frame
-      df <<- tmp
-    }
   }
+  
+  print( "Reading data from data file.")
+  df <- read.csv( data_file, as.is = TRUE )
   
   return( df )
 }
 
-# If data file is exists, read from it 
-if( file.exists( data_file ) ) {
-  df <- read.csv( data_file, as.is = TRUE )
-} else {
-  # Devices
-  devices <- c( "Danmini_Doorbell", "Ecobee_Thermostat", "Ennio_Doorbell", "Philips_B120N10_Baby_Monitor", 
-                "Provision_PT_737E_Security_Camera", "Provision_PT_838_Security_Camera", "Samsung_SNH_1011_N_Webcam", 
-                "SimpleHome_XCS7_1002_WHT_Security_Camera", "SimpleHome_XCS7_1003_WHT_Security_Camera" )
+# Read existing data
+df <- readDataSample()
+
+colnames <- colnames( df )
+```
+
+# Dataset description
   
-  device_number = 1
-  device <- devices[ device_number ]
+According to UCI MAchine Learning Repository [^1], this data set is the collection of real traffic data, gathered from 9 commercial IoT-devices authentically infected by Mirai and BASHLITE (gafgyt).
+
+The data set has 115 attributes:
+
+1. It has 5 time-frames: L5, L3, L1, L0.1 and L0.01.
+2. The statistics extracted from each stream for each time-frame:
+     - *weight*: the weight of the stream (can be viewed as the number of items observed in recent history)
+     - *mean*
+     - *std (variance)*
+     - *radius*: the root squared sum of the two streams' variances
+     - *magnitude*: the root squared sum of the two streams' means 
+     - *covariance*: an approximated covariance between two streams
+     - *pcc*: an approximated correlation coefficient between two streams
+3. It has following stream aggregations:
+     - *MI*: ("Source MAC-IP" in N-BaIoT paper) Stats summarizing the recent traffic from this packet's host (IP + MAC)
+     - *H*: ("Source IP" in N-BaIoT paper) Stats summarizing the recent traffic from this packet's host (IP)
+     - *HH*: ("Channel" in N-BaIoT paper) Stats summarizing the recent traffic going from this packet's host (IP) 
+           to the packet's destination host.
+     - *HH_jit*: ("Channel jitter" in N-BaIoT paper) Stats summarizing the jitter of the traffic going from this packet's host 
+           (IP) to the packet's destination host.
+     - *HpHp*: ("Socket" in N-BaIoT paper) Stats summarizing the recent traffic going from this packet's host+port (IP) 
+           to the packet's destination host+port. Example 192.168.4.2:1242 -> 192.168.4.12:80
   
-  # Create data frame from *.csv files and save it in data file
-  df <- createDataFrame( device )
+Thus, the column *'MI_dir_L5_weight'* in the data set shows the weight of the recent traffic from the packet's host for L5 time-frame.
+  
+The data set consists of \*.csv files, each representing a benign traffic or an attack. When I gathered \*.csv files together in one data set, I added *'botnet'* column, where I keep information about the attacks from the different botnets. The dataset contains *combo*, *junk*, *scan*, *tcp* and *udp* gafgyt attacks, and *ack*, *scan*, *syn*, *udp* and *udpplain* mirai attacks. I used *'ga'* prefix for gafgyt attacks and *'ma'* for mirai attacks in the *'botnet'* column.
 
-  if (nrow( df ) > 0 ) {
-    write.csv( df, file = data_file, row.names = FALSE )
-  }
-}
+Below I explore the data only from Danmini doorbell device. Because the whole dataset is huge, I'll use a sample data set that contains about 1000 rows for each botnet just for an illustrative purpose. Otherwise, all plots will be heavy.
+
+The few first columns contain the data for *MI* stream, and I start my research from *weight* data for L5 - L0.01 time-frames (MI_dir_L5_weight - MI_dir_L0.01_weight columns):
+
+```{r echo = FALSE, message = FALSE, warning = FALSE, width = 8}
+pattern <- "MI_dir_L(0)*(.)?(0)*\\d_(we)"
+  
+tmp <- df %>% select( botnet, grep( pattern = pattern, ignore.case = TRUE, x = colnames ) )
+  
+tmp %>% gather( attacks, data, -botnet ) %>% 
+  ggplot( aes( botnet, data, fill = botnet ) ) +
+  geom_boxplot() +
+  facet_wrap( ~attacks, scales = "free", ncol = 5 ) +
+  theme( axis.text.x = element_blank(), legend.position = "bottom" )
+```
+  
+The plot shows that using only the *weight* attribute, I can easily separate **benign traffic**, **ga_tcp** and **ga_udp** attacks from the other attacks. Their boxplots look like points on the plot, that is, their medians are close to 0, they do not have a large IQR, there are no outliers. This is more clearly seen at the small time-frames, let's view close up the *weight* attribute for L1 and L0.01 time-frames:
+
+```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height = 4}
+df %>% group_by( botnet ) %>% select (MI_dir_L1_weight ) %>% 
+  ggplot( aes( MI_dir_L1_weight, botnet,  fill = botnet ) ) + 
+  geom_boxplot() +
+  theme_minimal()
+  
+df %>% group_by( botnet ) %>% select (MI_dir_L0.01_weight ) %>% 
+  ggplot( aes( MI_dir_L0.01_weight, botnet,  fill = botnet ) ) + 
+  geom_boxplot() +
+  theme_minimal()
 ```
 
-```{r include = FALSE, message = FALSE, warning = FALSE}
-# Sample 
-sample_size <- 100
-n_bots <- df %>% distinct(botnet) %>% nrow()
-tmp <- df %>% group_by(botnet) %>% sample_n( sample_size )
-tmp <- tmp %>% select(-device)
+The **ga_tcp** an **ga_udp** disguise themselves well as **benign traffic**. So, I have to find at least one another attribute, that can help me separate **benign traffic** from **ga_tcp** and **ga_udp** attacks.
 
-# Explore L5-L0.01 weight
-tmp2 <- tmp %>% select(botnet, MI_dir_L5_weight, MI_dir_L3_weight, 
-                       MI_dir_L1_weight, MI_dir_L0.1_weight, MI_dir_L0.01_weight)
+Next, I would like to explore *mean* attribute for the same stream (MI_dir_L5_mean -  MI_dir_L0.01_mean):
 
-# Reshape dataset to plot multiply boxplots in one plot
-tmp3 <- melt(tmp2, id = "botnet")
+```{r echo = FALSE, message = FALSE, warning = FALSE}
+pattern <- "MI_dir_L(0)*(.)?(0)*\\d_(me)"
+  
+tmp <- df %>% select( botnet, grep( pattern = pattern, ignore.case = TRUE, x = colnames ) )
+  
+tmp %>% gather( attacks, data, -botnet ) %>% 
+  ggplot( aes( botnet, data, fill = botnet ) ) +
+  geom_boxplot() +
+  facet_wrap( ~attacks, scales = "free", ncol = 5 ) +
+  theme( axis.text.x = element_blank(), legend.position = "bottom" )
+```
+  
+This plot shows that *mean* attribute can help me separate **benign traffic** from **ga_tcp** and **ga_udp**, as median for **benign traffic** is higher that for these attacks. Let's check this on the small time-frames (L1 and L0.01):
+  
+```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height = 4}
+df %>% group_by( botnet ) %>% select (MI_dir_L1_mean ) %>% 
+  ggplot( aes( MI_dir_L1_mean, botnet,  fill = botnet ) ) + 
+  geom_boxplot() +
+  theme_minimal()
+  
+df %>% group_by( botnet ) %>% select (MI_dir_L0.01_mean ) %>% 
+  ggplot( aes( MI_dir_L0.01_mean, botnet,  fill = botnet ) ) +
+  geom_boxplot() +
+  theme_minimal()
+```
+  
+Therefore, I still need one more attribute as all of them have outliers, and using only the *weight* and *mean* attributes will not help clearly separate **benign traffic** from the attacks.
+
+After that let's explore *variance* attribute (MI_dir_L5_variance - MI_dir_L0.01_variance):
+
+```{r echo = FALSE, message = FALSE, warning = FALSE}
+pattern <- "MI_dir_L(0)*(.)?(0)*\\d_(var)"
+  
+tmp <- df %>% select( botnet, grep( pattern = pattern, ignore.case = TRUE, x = colnames ) )
+  
+tmp %>% gather( attacks, data, -botnet ) %>% 
+  ggplot( aes( botnet, data, fill = botnet ) ) +
+  geom_boxplot() +
+  facet_wrap( ~attacks, scales = "free", ncol = 5 ) +
+  theme( axis.text.x = element_blank(), legend.position = "bottom" )
+```
+  
+This plot shows that *variance* attribute doesn't give a new information how to separate **benign traffic** from attacks, so I can easily
+remove this attribute if I need to reduce the data frame (or martix) dimension.
+  
+I have finished with MI stream and can explore statistics for H and HH streams. In the same way as for the previous stream, I will consider *weight*, *mean* and *variance* (or *std*) attributes:
+  
+```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height = 4}
+# Weight
+pattern <- "H_L(0)*(.)?(0)*\\d_(we)"
+  
+tmp <- df %>% select( botnet, grep( pattern = pattern, ignore.case = TRUE, x = colnames ) )
+  
+tmp %>% gather( attacks, data, -botnet ) %>% 
+  ggplot( aes( botnet, data, fill = botnet ) ) +
+  geom_boxplot() +
+  facet_wrap( ~attacks, scales = "free", ncol = 5 ) +
+  theme( axis.text.x = element_blank(), legend.position = "bottom" )
+  
+# Mean
+pattern <- "H_L(0)*(.)?(0)*\\d_(me)"
+  
+tmp <- df %>% select( botnet, grep( pattern = pattern, ignore.case = TRUE, x = colnames ) )
+  
+tmp %>% gather( attacks, data, -botnet ) %>% 
+  ggplot( aes( botnet, data, fill = botnet ) ) +
+  geom_boxplot() +
+  facet_wrap( ~attacks, scales = "free", ncol = 5 ) +
+  theme( axis.text.x = element_blank(), legend.position = "bottom" )
+  
+# Variance
+pattern <- "H_L(0)*(.)?(0)*\\d_(var)"
+  
+tmp <- df %>% select( botnet, grep( pattern = pattern, ignore.case = TRUE, x = colnames ) )
+  
+tmp %>% gather( attacks, data, -botnet ) %>% 
+  ggplot( aes( botnet, data, fill = botnet ) ) +
+  geom_boxplot() +
+    facet_wrap( ~attacks, scales = "free", ncol = 5 ) +
+    theme( axis.text.x = element_blank(), legend.position = "bottom" )
+  
+# Std
+pattern <- "H_L(0)*(.)?(0)*\\d_(std)"
+  
+tmp <- df %>% select( botnet, grep( pattern = pattern, ignore.case = TRUE, x = colnames ) )
+  
+tmp %>% gather( attacks, data, -botnet ) %>% 
+  ggplot( aes( botnet, data, fill = botnet ) ) +
+  geom_boxplot() +
+  facet_wrap( ~attacks, scales = "free", ncol = 5 ) +
+  theme( axis.text.x = element_blank(), legend.position = "bottom" )
+```
+  
+All plots show that I can use *weight* and *mean* attributes to separate **benign traffic** from the attacks, and remove *variance* or *std* attributes if I need to reduce the data frame (or matrix) dimension.
+
+HH-stream also has *magnitude*, *radius*, *covariace* and *pcc* attributes, let's explore them:
+  
+```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height = 4}
+pattern <- "H_L(0)*(.)?(0)*\\d_(ma)"
+  
+tmp <- df %>% select( botnet, grep( pattern = pattern, ignore.case = TRUE, x = colnames ) )
+  
+tmp %>% gather( attacks, data, -botnet ) %>% 
+  ggplot( aes( botnet, data, fill = botnet ) ) +
+  geom_boxplot() +
+  facet_wrap( ~attacks, scales = "free", ncol = 5 ) +
+  theme( axis.text.x = element_blank(), legend.position = "bottom" )
+```
+  
+The plot shows that *magnitude* attribute can be used for separation **benign traffic** from the attacks.
+  
+```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height = 4}
+pattern <- "H_L(0)*(.)?(0)*\\d_(rad)"
+  
+tmp <- df %>% select( botnet, grep( pattern = pattern, ignore.case = TRUE, x = colnames ) )
+  
+tmp %>% gather( attacks, data, -botnet ) %>% 
+  ggplot( aes( botnet, data, fill = botnet ) ) +
+  geom_boxplot() +
+  facet_wrap( ~attacks, scales = "free", ncol = 5 ) +
+  theme( axis.text.x = element_blank(), legend.position = "bottom" )
+```
+  
+The plot shows that *radius* attribute doesn't give any information how to separate **benign traffic** from the attacks and can be removed if needed.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height = 4}
+pattern <- "H_L(0)*(.)?(0)*\\d_(co)"
+  
+tmp <- df %>% select( botnet, grep( pattern = pattern, ignore.case = TRUE, x = colnames ) )
+  
+tmp %>% gather( attacks, data, -botnet ) %>% 
+  ggplot( aes( botnet, data, fill = botnet ) ) +
+  geom_boxplot() +
+  facet_wrap( ~attacks, scales = "free", ncol = 5 ) +
+  theme( axis.text.x = element_blank(), legend.position = "bottom" )
+```
+  
+*Covariance* attribute can be used for separation attacks from **benign traffic**, and, probably, it's the one I've looked for.
+  
+```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height = 4}
+pattern <- "H_L(0)*(.)?(0)*\\d_(pcc)"
+  
+tmp <- df %>% select( botnet, grep( pattern = pattern, ignore.case = TRUE, x = colnames ) )
+  
+tmp %>% gather( attacks, data, -botnet ) %>% 
+  ggplot( aes( botnet, data, fill = botnet ) ) +
+  geom_boxplot() +
+  facet_wrap( ~attacks, scales = "free", ncol = 5 ) +
+  theme( axis.text.x = element_blank(), legend.position = "bottom" )
+```
+  
+The plot shows that, probably, *pcc* attrubute can also be used for separation.
+
+Next stream for exploration is HH_jit. And because I followed the same pattern when I explored other streams, now I can make a quick glimpse.
+  
+```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height = 8}
+pattern <- "HH_jit"
+  
+tmp <- df %>% select( botnet, grep( pattern = pattern, ignore.case = TRUE, x = colnames ) )
+  
+tmp %>% gather( attacks, data, -botnet ) %>% 
+  ggplot( aes( botnet, data, fill = botnet ) ) +
+  geom_boxplot() +
+  facet_wrap( ~attacks, scales = "free", ncol = 3 ) +
+  theme( axis.text.x = element_blank(), legend.position = "bottom" )
+```
+  
+These plots have no new information how to separate **benign traffic** from attacks.
+  
+Now, I have left only HpHp strean for exploration, and again, I can make a quick glimpse:
+  
+```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height = 15, fig.width = 12}
+pattern <- "HpHp"
+  
+tmp <- df %>% select( botnet, grep( pattern = pattern, ignore.case = TRUE, x = colnames ) )
+  
+tmp %>% gather( attacks, data, -botnet ) %>% 
+  ggplot( aes( botnet, data, fill = botnet ) ) +
+  geom_boxplot() +
+  facet_wrap( ~attacks, scales = "free", ncol = 5 ) +
+  theme( axis.text.x = element_blank(), legend.position = "bottom" )
 ```
 
-Explore MI_dir_L5_weight, MI_dir_L3_weight, MI_dir_L1_weight, MI_dir_L0.1_weight, MI_dir_L0.01_weight
-```{r include = TRUE, message = FALSE, warning = FALSE}
-tmp3 %>% ggplot(aes(variable, value,  color = as.factor(botnet))) + 
-  geom_boxplot() +
-  theme(axis.text.x = element_text(angle=90, hjust=1))
-
-# 1 
-df %>% group_by(botnet) %>% select(MI_dir_L5_weight) %>% 
-  ggplot(aes(MI_dir_L5_weight, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 2 
-df %>% group_by(botnet) %>% select(MI_dir_L3_weight) %>% 
-  ggplot(aes(MI_dir_L3_weight, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 3 
-df %>% group_by(botnet) %>% select(MI_dir_L1_weight) %>% 
-  ggplot(aes(MI_dir_L1_weight, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 4 
-df %>% group_by(botnet) %>% select(MI_dir_L0.1_weight) %>% 
-  ggplot(aes(MI_dir_L0.1_weight, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 5 
-df %>% group_by(botnet) %>% select(MI_dir_L0.01_weight) %>% 
-  ggplot(aes(MI_dir_L0.01_weight, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-
-# Explore L5-L0.01 means
-tmp2 <- tmp %>% select(botnet, MI_dir_L5_mean, MI_dir_L3_mean, 
-                       MI_dir_L1_mean, MI_dir_L0.1_mean, MI_dir_L0.01_mean)
-
-# Reshape dataset to plot multiply boxplots in one plot
-tmp3 <- melt(tmp2, id = "botnet")
-
-tmp3 %>% ggplot(aes(variable, value,  color = as.factor(botnet))) + 
-  geom_boxplot() +
-  theme(axis.text.x = element_text(angle=90, hjust=1))
-
-# 1 
-df %>% group_by(botnet) %>% select(MI_dir_L5_mean) %>% 
-  ggplot(aes(MI_dir_L5_mean, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 2 
-df %>% group_by(botnet) %>% select(MI_dir_L3_mean) %>% 
-  ggplot(aes(MI_dir_L3_mean, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 3 
-df %>% group_by(botnet) %>% select(MI_dir_L1_mean) %>% 
-  ggplot(aes(MI_dir_L1_mean, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 4 
-df %>% group_by(botnet) %>% select(MI_dir_L0.1_mean) %>% 
-  ggplot(aes(MI_dir_L0.1_mean, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 5 
-df %>% group_by(botnet) %>% select(MI_dir_L0.01_mean) %>% 
-  ggplot(aes(MI_dir_L0.01_mean, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-
-# Explore L5-L0.01 variance
-tmp2 <- tmp %>% select(botnet, MI_dir_L5_variance, MI_dir_L3_variance, 
-                       MI_dir_L1_variance, MI_dir_L0.1_variance, MI_dir_L0.01_variance)
-
-# Reshape dataset to plot multiply boxplots in one plot
-tmp3 <- melt(tmp2, id = "botnet")
-
-tmp3 %>% ggplot(aes(variable, value,  color = as.factor(botnet))) + 
-  geom_boxplot() +
-  theme(axis.text.x = element_text(angle=90, hjust=1))
-
-
-
-# Explore H_L5-H_L0.01 weight
-tmp2 <- tmp %>% select(botnet, H_L5_weight, H_L3_weight, H_L1_weight,
-                       H_L0.1_weight, H_L0.01_weight)
-
-# Reshape dataset to plot multiply boxplots in one plot
-tmp3 <- melt(tmp2, id = "botnet")
-
-tmp3 %>% ggplot(aes(variable, value,  color = as.factor(botnet))) + 
-  geom_boxplot() +
-  theme(axis.text.x = element_text(angle=90, hjust=1))
-
-# 1 
-df %>% group_by(botnet) %>% select(H_L5_weight) %>% 
-  ggplot(aes(H_L5_weight, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 2 
-df %>% group_by(botnet) %>% select(H_L3_weight) %>% 
-  ggplot(aes(H_L3_weight, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 3 
-df %>% group_by(botnet) %>% select(H_L1_weight) %>% 
-  ggplot(aes(H_L1_weight, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 4 
-df %>% group_by(botnet) %>% select(H_L0.1_weight) %>% 
-  ggplot(aes(H_L0.1_weight, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 5 
-df %>% group_by(botnet) %>% select(H_L0.01_weight) %>% 
-  ggplot(aes(H_L0.01_weight, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-
-# Explore H_L5-H_L0.01 means
-tmp2 <- tmp %>% select(botnet,H_L5_mean, H_L3_mean, H_L1_mean,
-                       H_L0.1_mean, H_L0.01_mean)
-
-# Reshape dataset to plot multiply boxplots in one plot
-tmp3 <- melt(tmp2, id = "botnet")
-
-tmp3 %>% ggplot(aes(variable, value,  color = as.factor(botnet))) + 
-  geom_boxplot() +
-  theme(axis.text.x = element_text(angle=90, hjust=1))
-
-# 1 
-df %>% group_by(botnet) %>% select(H_L5_mean) %>% 
-  ggplot(aes(H_L5_mean, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 2 
-df %>% group_by(botnet) %>% select(H_L3_mean) %>% 
-  ggplot(aes(H_L3_mean, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 3 
-df %>% group_by(botnet) %>% select(H_L1_mean) %>% 
-  ggplot(aes(H_L1_mean, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 4 
-df %>% group_by(botnet) %>% select(H_L0.1_mean) %>% 
-  ggplot(aes(H_L0.1_mean, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 5 
-df %>% group_by(botnet) %>% select(H_L0.01_mean) %>% 
-  ggplot(aes(H_L0.01_mean, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-
-
-
-
-# Explore HH_L5-HH_L0.01 weight
-tmp2 <- tmp %>% select(botnet, HH_L5_weight, HH_L3_weight, HH_L1_weight,
-                       HH_L0.1_weight, HH_L0.01_weight)
-
-# Reshape dataset to plot multiply boxplots in one plot
-tmp3 <- melt(tmp2, id = "botnet")
-
-tmp3 %>% ggplot(aes(variable, value,  color = as.factor(botnet))) + 
-  geom_boxplot() +
-  theme(axis.text.x = element_text(angle=90, hjust=1))
-
-# 1 
-df %>% group_by(botnet) %>% select(HH_L5_weight) %>% 
-  ggplot(aes(HH_L5_weight, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 2 
-df %>% group_by(botnet) %>% select(HH_L3_weight) %>% 
-  ggplot(aes(HH_L3_weight, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 3 
-df %>% group_by(botnet) %>% select(HH_L1_weight) %>% 
-  ggplot(aes(HH_L1_weight, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 4 
-df %>% group_by(botnet) %>% select(HH_L0.1_weight) %>% 
-  ggplot(aes(HH_L0.1_weight, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 5 
-df %>% group_by(botnet) %>% select(HH_L0.01_weight) %>% 
-  ggplot(aes(HH_L0.01_weight, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-
-# Explore HH_L5-HH_L0.01 means
-tmp2 <- tmp %>% select(botnet,HH_L5_mean, HH_L3_mean, HH_L1_mean,
-                       HH_L0.1_mean, HH_L0.01_mean)
-
-# Reshape dataset to plot multiply boxplots in one plot
-tmp3 <- melt(tmp2, id = "botnet")
-
-tmp3 %>% ggplot(aes(variable, value,  color = as.factor(botnet))) + 
-  geom_boxplot() +
-  theme(axis.text.x = element_text(angle=90, hjust=1))
-
-# 1 
-df %>% group_by(botnet) %>% select(HH_L5_mean) %>% 
-  ggplot(aes(HH_L5_mean, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 2 
-df %>% group_by(botnet) %>% select(HH_L3_mean) %>% 
-  ggplot(aes(HH_L3_mean, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 3 
-df %>% group_by(botnet) %>% select(HH_L1_mean) %>% 
-  ggplot(aes(HH_L1_mean, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 4 
-df %>% group_by(botnet) %>% select(HH_L0.1_mean) %>% 
-  ggplot(aes(HH_L0.1_mean, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 5 
-df %>% group_by(botnet) %>% select(HH_L0.01_mean) %>% 
-  ggplot(aes(HH_L0.01_mean, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-
-# Explore HH_L5-HH_L0.01 magnitude
-tmp2 <- tmp %>% select(botnet, HH_L5_magnitude, HH_L3_magnitude, HH_L1_magnitude, 
-                       HH_L0.1_magnitude, HH_L0.01_magnitude)
-
-# Reshape dataset to plot multiply boxplots in one plot
-tmp3 <- melt(tmp2, id = "botnet")
-
-tmp3 %>% ggplot(aes(variable, value,  color = as.factor(botnet))) + 
-  geom_boxplot() +
-  theme(axis.text.x = element_text(angle=90, hjust=1))
-
-# 1 
-df %>% group_by(botnet) %>% select(HH_L5_magnitude) %>% 
-  ggplot(aes(HH_L5_magnitude, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 2 
-df %>% group_by(botnet) %>% select(HH_L3_magnitude) %>% 
-  ggplot(aes(HH_L3_magnitude, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 3 
-df %>% group_by(botnet) %>% select(HH_L1_magnitude) %>% 
-  ggplot(aes(HH_L1_magnitude, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 4 
-df %>% group_by(botnet) %>% select(HH_L0.1_magnitude) %>% 
-  ggplot(aes(HH_L0.1_magnitude, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 5 
-df %>% group_by(botnet) %>% select(HH_L0.01_magnitude) %>% 
-  ggplot(aes(HH_L0.01_magnitude, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-
-# Explore HH_L5-HH_L0.01 std
-tmp2 <- tmp %>% select(botnet, HH_L5_std, HH_L3_std, HH_L1_std, 
-                       HH_L0.1_std, HH_L0.01_std)
-
-# Reshape dataset to plot multiply boxplots in one plot
-tmp3 <- melt(tmp2, id = "botnet")
-
-tmp3 %>% ggplot(aes(variable, value,  color = as.factor(botnet))) + 
-  geom_boxplot() +
-  theme(axis.text.x = element_text(angle=90, hjust=1))
-
-# 1 
-df %>% group_by(botnet) %>% select(HH_L5_std) %>% 
-  ggplot(aes(HH_L5_std, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 2 
-df %>% group_by(botnet) %>% select(HH_L3_std) %>% 
-  ggplot(aes(HH_L3_std, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 3 
-df %>% group_by(botnet) %>% select(HH_L1_std) %>% 
-  ggplot(aes(HH_L1_std, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 4 
-df %>% group_by(botnet) %>% select(HH_L0.1_std) %>% 
-  ggplot(aes(HH_L0.1_std, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 5 
-df %>% group_by(botnet) %>% select(HH_L0.01_std) %>% 
-  ggplot(aes(HH_L0.01_std, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# Explore HH_L5-HH_L0.01 radius
-tmp2 <- tmp %>% select(botnet, HH_L5_radius, HH_L3_radius, HH_L1_radius, 
-                       HH_L0.1_radius, HH_L0.01_radius)
-
-# Reshape dataset to plot multiply boxplots in one plot
-tmp3 <- melt(tmp2, id = "botnet")
-
-tmp3 %>% ggplot(aes(variable, value,  color = as.factor(botnet))) + 
-  geom_boxplot() +
-  theme(axis.text.x = element_text(angle=90, hjust=1))
-
-# 1 
-df %>% group_by(botnet) %>% select(HH_L5_radius) %>% 
-  ggplot(aes(HH_L5_radius, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 2 
-df %>% group_by(botnet) %>% select(HH_L3_radius) %>% 
-  ggplot(aes(HH_L3_radius, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 3 
-df %>% group_by(botnet) %>% select(HH_L1_radius) %>% 
-  ggplot(aes(HH_L1_radius, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 4 
-df %>% group_by(botnet) %>% select(HH_L0.1_radius) %>% 
-  ggplot(aes(HH_L0.1_radius, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 5 
-df %>% group_by(botnet) %>% select(HH_L0.01_radius) %>% 
-  ggplot(aes(HH_L0.01_radius, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-
-# Explore HH_L5-HH_L0.01 covariance
-tmp2 <- tmp %>% select(botnet, HH_L5_covariance, HH_L3_covariance, HH_L1_covariance, 
-                       HH_L0.1_covariance, HH_L0.01_covariance)
-
-# Reshape dataset to plot multiply boxplots in one plot
-tmp3 <- melt(tmp2, id = "botnet")
-
-tmp3 %>% ggplot(aes(variable, value,  color = as.factor(botnet))) + 
-  geom_boxplot() +
-  theme(axis.text.x = element_text(angle=90, hjust=1))
-
-# 1 
-df %>% group_by(botnet) %>% select(HH_L5_covariance) %>% 
-  ggplot(aes(HH_L5_covariance, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 2 
-df %>% group_by(botnet) %>% select(HH_L3_covariance) %>% 
-  ggplot(aes(HH_L3_covariance, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 3 
-df %>% group_by(botnet) %>% select(HH_L1_covariance) %>% 
-  ggplot(aes(HH_L1_covariance, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 4 
-df %>% group_by(botnet) %>% select(HH_L0.1_covariance) %>% 
-  ggplot(aes(HH_L0.1_covariance, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 5 
-df %>% group_by(botnet) %>% select(HH_L0.01_covariance) %>% 
-  ggplot(aes(HH_L0.01_covariance, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-
-# Explore HH_jit_L5 - L0.01 weight
-tmp2 <- tmp %>% select(botnet, HH_jit_L5_weight, HH_jit_L3_weight, HH_jit_L1_weight, 
-                       HH_jit_L0.1_weight, HH_jit_L0.01_weight)
-
-# Reshape dataset to plot multiply boxplots in one plot
-tmp3 <- melt(tmp2, id = "botnet")
-
-tmp3 %>% ggplot(aes(variable, value,  color = as.factor(botnet))) + 
-  geom_boxplot() +
-  theme(axis.text.x = element_text(angle=90, hjust=1))
-
-# 1 
-df %>% group_by(botnet) %>% select(HH_jit_L5_weight) %>% 
-  ggplot(aes(HH_jit_L5_weight, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 2 
-df %>% group_by(botnet) %>% select(HH_jit_L3_weight) %>% 
-  ggplot(aes(HH_jit_L3_weight, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 3 
-df %>% group_by(botnet) %>% select(HH_jit_L1_weight) %>% 
-  ggplot(aes(HH_jit_L1_weight, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 4 
-df %>% group_by(botnet) %>% select(HH_jit_L0.1_weight) %>% 
-  ggplot(aes(HH_jit_L0.1_weight, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 5 
-df %>% group_by(botnet) %>% select(HH_jit_L0.01_weight) %>% 
-  ggplot(aes(HH_jit_L0.01_weight, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-
-# Explore HH_jit_L5 - L0.01 mean
-tmp2 <- tmp %>% select(botnet, HH_jit_L5_mean, HH_jit_L3_mean, HH_jit_L1_mean, 
-                       HH_jit_L0.1_mean, HH_jit_L0.01_mean)
-
-# Reshape dataset to plot multiply boxplots in one plot
-tmp3 <- melt(tmp2, id = "botnet")
-
-tmp3 %>% ggplot(aes(variable, value,  color = as.factor(botnet))) + 
-  geom_boxplot() +
-  theme(axis.text.x = element_text(angle=90, hjust=1))
-
-# 1 
-df %>% group_by(botnet) %>% select(HH_jit_L5_mean) %>% 
-  ggplot(aes(HH_jit_L5_mean, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 2 
-df %>% group_by(botnet) %>% select(HH_jit_L3_mean) %>% 
-  ggplot(aes(HH_jit_L3_mean, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 3 
-df %>% group_by(botnet) %>% select(HH_jit_L1_mean) %>% 
-  ggplot(aes(HH_jit_L1_mean, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 4 
-df %>% group_by(botnet) %>% select(HH_jit_L0.1_mean) %>% 
-  ggplot(aes(HH_jit_L0.1_mean, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 5 
-df %>% group_by(botnet) %>% select(HH_jit_L0.01_mean) %>% 
-  ggplot(aes(HH_jit_L0.01_mean, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# Explore HpHp_L5 - L0.01 weight
-tmp2 <- tmp %>% select(botnet, HpHp_L5_weight, HpHp_L3_weight, HpHp_L1_weight,
-                       HpHp_L0.1_weight, HpHp_L0.01_weight)
-
-# Reshape dataset to plot multiply boxplots in one plot
-tmp3 <- melt(tmp2, id = "botnet")
-
-tmp3 %>% ggplot(aes(variable, value,  color = as.factor(botnet))) + 
-  geom_boxplot() +
-  theme(axis.text.x = element_text(angle=90, hjust=1))
-
-# 1 
-df %>% group_by(botnet) %>% select(HpHp_L5_weight) %>% 
-  ggplot(aes(HpHp_L5_weight, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 2 
-df %>% group_by(botnet) %>% select(HpHp_L3_weight) %>% 
-  ggplot(aes(HpHp_L3_weight, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 3 
-df %>% group_by(botnet) %>% select(HpHp_L1_weight) %>% 
-  ggplot(aes(HpHp_L1_weight, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 4 
-df %>% group_by(botnet) %>% select(HpHp_L0.1_weight) %>% 
-  ggplot(aes(HpHp_L0.1_weight, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 5 
-df %>% group_by(botnet) %>% select(HpHp_L0.01_weight) %>% 
-  ggplot(aes(HpHp_L0.01_weight, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# Explore HpHp_L5 - L0.01 mean
-tmp2 <- tmp %>% select(botnet, HpHp_L5_mean, HpHp_L3_mean, HpHp_L1_mean,
-                       HpHp_L0.1_mean, HpHp_L0.01_mean)
-
-# Reshape dataset to plot multiply boxplots in one plot
-tmp3 <- melt(tmp2, id = "botnet")
-
-tmp3 %>% ggplot(aes(variable, value,  color = as.factor(botnet))) + 
-  geom_boxplot() +
-  theme(axis.text.x = element_text(angle=90, hjust=1))
-
-# 1 
-df %>% group_by(botnet) %>% select(HpHp_L5_mean) %>% 
-  ggplot(aes(HpHp_L5_mean, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 2 
-df %>% group_by(botnet) %>% select(HpHp_L3_mean) %>% 
-  ggplot(aes(HpHp_L3_mean, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 3 
-df %>% group_by(botnet) %>% select(HpHp_L1_mean) %>% 
-  ggplot(aes(HpHp_L1_mean, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 4 
-df %>% group_by(botnet) %>% select(HpHp_L0.1_mean) %>% 
-  ggplot(aes(HpHp_L0.1_mean, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
-# 5 
-df %>% group_by(botnet) %>% select(HpHp_L0.01_mean) %>% 
-  ggplot(aes(HpHp_L0.01_mean, botnet,  fill = as.factor(botnet))) + 
-  geom_boxplot()
-
+I didn't expect, that this stream gives me new information how to separate **benign traffic** from the attacks.
+  
+I've noticed that all the plots have more pronounced data at the small time-frames. I would like to explore what data will give me some attribute combinations, like *weight* vs. *mean* exactly on  these small time-frames.
+  
+```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height = 4}
+df %>% ggplot( aes( MI_dir_L1_weight, MI_dir_L1_mean, color = botnet ) ) + geom_point()
+df %>% ggplot( aes( MI_dir_L0.01_weight, MI_dir_L0.01_mean, color = botnet ) ) + geom_point()
+```
+  
+Pair *weight-mean* for L0.01 time-frame shows how easily some attacks can be separated from **benign traffic**, compared with L1 time-frame.
+  
+```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height = 4}
+df %>% ggplot( aes( HH_L1_mean, HH_L1_covariance, color = botnet ) ) + geom_point()
+df %>% ggplot( aes( HH_L0.01_mean, HH_L0.01_covariance, color = botnet ) ) + geom_point()
+
+rm( df, tmp, pattern, error, colnames, data_file, data_folder, data_url, sample_size )
 ```
 
-```{r include = FALSE, message = FALSE, warning = FALSE}
-tmp %>% ggplot(aes(MI_dir_L5_weight, MI_dir_L5_mean, color = as.factor(botnet))) + geom_point()
-tmp %>% ggplot(aes(MI_dir_L1_weight, MI_dir_L1_mean, color = as.factor(botnet))) + geom_point()
-tmp %>% ggplot(aes(MI_dir_L0.01_weight, MI_dir_L0.01_mean, color = as.factor(botnet))) + geom_point()
-tmp %>% ggplot(aes(H_L1_weight, H_L1_mean, color = as.factor(botnet))) + geom_point()
-tmp %>% ggplot(aes(HH_L1_weight, HH_L1_radius, color = as.factor(botnet))) + geom_point()
-tmp %>% ggplot(aes(HH_L1_weight, HH_L1_covariance, color = as.factor(botnet))) + geom_point()
-tmp %>% ggplot(aes(HH_L0.01_weight, HH_L0.01_covariance, color = as.factor(botnet))) + geom_point()
-```
+Pair *mean-covariance* better shows how **ga_tcp** and **ga_udp** can be separated from **benign traffic**.
 
+In a result, all explorations show that I can use *weight*, *mean* and *covariance* attributes to make a decision how to separate **benign traffic** from attacks, and remove other statistic attributes if I need to reduce the data frame (or matrix) dimension.
+
+[^1]: [detection_of_IoT_botnet_attacks_N_BaIoT Data Set](https://archive.ics.uci.edu/ml/datasets/detection_of_IoT_botnet_attacks_N_BaIoT)
