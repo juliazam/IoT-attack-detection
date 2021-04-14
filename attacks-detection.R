@@ -12,7 +12,7 @@
 # traffic data plus all the malicious data (their test set) to check if 
 # autoencoder can detect anomaly. They got anomaly detection with 100% TPR.
 # 
-# My aim in this research is to check how well the algorithms I learnt on
+# My aim in this project is to check how well the algorithms I learned on
 # HarvardX PH125.9x Data Science course (such as KNN, rpart and RandomForest) can
 # detect malicious data.
 #
@@ -70,7 +70,8 @@ readData <- function() {
   
   # https://www118.zippyshare.com/v/NDCWjCMp/file.html
   #datafile_url <- "https://www118.zippyshare.com/d/NDCWjCMp/137805/data.zip"
-  datafile_url <- "https://download1319.mediafire.com/4gjqeie9uspg/4z8sk6r3lov2spc/data.zip"
+  datafile_url <- "https://download1319.mediafire.com/jjules6qldfg/4z8sk6r3lov2spc/data.zip"
+  
   
   # If data file doesn't exist in local folder,download it 
   if( !file.exists( data_file ) ) {
@@ -154,11 +155,12 @@ if( !is.null( df ) ) {
   colnames <- colnames( df )
   
   # Convert 'botnet' column as factor because for most functions that used for
-  # classification, the outcome should me in this format.
+  # classification, the outcome should be in this format.
   df$botnet <- as.factor( df$botnet )
   
   # How many botnets are in data set?
-  df %>% group_by( botnet ) %>% summarise( n = n() ) %>% arrange( desc( n ) )
+  nrow <- nrow( df )
+  df %>% group_by( botnet ) %>% summarise( n = n(), prop = n / nrow ) %>% arrange( desc( n ) )
   
   # Plot botnets distribution
   df %>%  select( botnet ) %>%
@@ -205,7 +207,7 @@ if( !is.null( df ) ) {
   # 1. Using PCA
   setSeed()
   
-  # 1. Check only columns with weight attribute
+  # 1. Check only columns with 'weight' attribute
   pattern <- "(weight)"
   
   # Select only columns that match the pattern. In this case - only 'weight' column
@@ -280,6 +282,9 @@ if( !is.null( df ) ) {
   # Plot k ~ accuracy
   plot( ks, accuracy, type = "o", col = "dodgerblue3" )
   
+  # Print k that gives max accuracy
+  print( paste( "K = ", ks[ which.max( accuracy ) ] ) )
+  
   # Print max accuracy
   print( paste( "Max accuracy = ", max( accuracy ) ) )
   
@@ -321,11 +326,11 @@ if( !is.null( df ) ) {
   cm$overall[ "Accuracy" ]
   
   # Check sensitivity and specificity
-  cm$byClass[,1:2]
+  cm$byClass[ ,1:2 ]
   
   # Using only 2% of data and all the predictors, the final result is better.
   
-  # Save ths result
+  # Save this result
   results <- add_row( .data = results,
                       Method = "KNN, using train() function from caret package", 
                       Predictors = paste( ncol( tmp ) - 1 ),
@@ -337,7 +342,8 @@ if( !is.null( df ) ) {
   
   # With k=1 we can predict very well, because each row that represents attack is used 
   # to predict itself. 
-  # It may look like overtraining, but in this particular case, it seems reasonable.
+  # It may look like overtraining, but in this particular case because of cyber 
+  # attacks prediction , it seems reasonable.
   
   # With more than 100 predictors, the neighborhood is almost
   # the entire dataset. Even with 24 predictors, we have to use approximately 
@@ -357,7 +363,7 @@ if( !is.null( df ) ) {
   
   rm( ncol, p, ps, size )
   
-  # Let's increase data set size for classification and reduce it dimension
+  # 3. Let's increase data set size for classification and reduce it dimension
   # 20% of data (because of memory limit), 24 predictors
   setSeed()
   
@@ -386,7 +392,7 @@ if( !is.null( df ) ) {
   cm$overall["Accuracy"]
   
   # Check sensitivity and specificity
-  cm$byClass[,1:2]
+  cm$byClass[ ,1:2 ]
   
   # My research has shown that I can use 'weight' and 'mean' columns for
   # attacks classification.
@@ -425,7 +431,10 @@ if( !is.null( df ) ) {
   plot( fit_rpart, margin = 0.1, main="rpart decision tree")
   text( fit_rpart, cex = 0.75)
   
-  y_hat <- predict( fit_rpart, test_set, type = "class") 
+  # Importance of predictors (columns)
+  varImp( fit_rpart )
+  
+  y_hat <- predict( fit_rpart, test_set, type = "class" ) 
   cm <- confusionMatrix( y_hat, as.factor(test_set$botnet ) )
   cm$overall["Accuracy"]
   
@@ -486,7 +495,7 @@ if( !is.null( df ) ) {
                       Accuracy = cm$overall["Accuracy"] )
   
   # I would like to visualize randomForest decision tree.
-  # I used a method described on "Plotting trees from Random Forest models 
+  # I used a method described in "Plotting trees from Random Forest models 
   # with ggraph" article.
   # https://shiring.github.io/machine_learning/2017/03/16/rf_plot_ggraph
   treeNum <- min( fit_rm$forest$ndbigtree )
@@ -531,7 +540,7 @@ if( !is.null( df ) ) {
   decisionTree
   
   # Importance of predictors (columns)
-  importance( fit_rm )
+  varImp( fit_rm )
   
   # randomForest algorithm gives an opportunity to check the importance of
   # the predictors (columns). And it shows that it mostly used 'weight', 'mean' 
