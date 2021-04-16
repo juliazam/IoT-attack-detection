@@ -68,10 +68,11 @@ readData <- function() {
   # All IoT attacks data gathered in one file
   data_file <- file.path( data_folder, "data.csv" )
   
-  # https://www118.zippyshare.com/v/NDCWjCMp/file.html
-  #datafile_url <- "https://www118.zippyshare.com/d/NDCWjCMp/137805/data.zip"
   datafile_url <- "https://download1319.mediafire.com/jjules6qldfg/4z8sk6r3lov2spc/data.zip"
   
+  # Please, use alternative link, if you can't download from mediafire
+  # https://www118.zippyshare.com/v/NDCWjCMp/file.html
+  #datafile_url <- "https://www118.zippyshare.com/d/NDCWjCMp/25673/data.zip"
   
   # If data file doesn't exist in local folder,download it 
   if( !file.exists( data_file ) ) {
@@ -243,7 +244,7 @@ if( !is.null( df ) ) {
   # Create levels for attacks classification
   levels <- as.factor( train_set[ ,1 ] )
   
-  # Remove 'botnet' column
+  # Now remove 1st column, that represents 'botnet' column 
   train_set <- train_set[ ,-1 ]
   
   # Convert test set as matrix
@@ -252,7 +253,7 @@ if( !is.null( df ) ) {
   # Botnets outcome for the test set
   bots <- as.factor( test_set[ ,1 ] )
   
-  # Remove 'botnet' column
+  # Now remove 1st column, that represents 'botnet' column 
   test_set <- test_set[ ,-1 ]
   
   # Perform PCA
@@ -363,7 +364,7 @@ if( !is.null( df ) ) {
   
   rm( ncol, p, ps, size )
   
-  # 3. Let's increase data set size for classification and reduce it dimension
+  # 3. Let's reduce data set dimension and increase data set size for classification
   # 20% of data (because of memory limit), 24 predictors
   setSeed()
   
