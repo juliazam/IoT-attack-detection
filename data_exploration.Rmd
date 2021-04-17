@@ -56,11 +56,11 @@ colnames <- colnames( df )
 
 # Data set description
   
-According to UCI MAchine Learning Repository [^1], this data set is the collection of real traffic data, gathered from 9 commercial IoT (*Internet of Things*) devices authentically infected by Mirai and BASHLITE (Gafgyt).
+According to UCI Machine Learning Repository [^1], this data set is the collection of real traffic data, gathered from 9 commercial IoT (*Internet of Things*) devices authentically infected by Mirai and BASHLITE (Gafgyt).
 
 The data set has 115 attributes (parameters), below is the description of their headers:
 
-1. It has 5 time-frames: L5 (1 min), L3 (10 sec), L1 (1.5 sec), L0.1 (500 ms) and L0.01 (100 ms).
+1. It has 5 time-frames: L5 (1 min), L3 (10 sec), L1 (1.5 sec), L0.1 (500 ms) and L0.01 (100 ms)[^2].
 2. The statistics extracted from each traffic stream for each time-frame:
      - *weight*: the weight of the stream (can be viewed as the number of items observed in recent history)
      - *mean*
@@ -80,13 +80,13 @@ The data set has 115 attributes (parameters), below is the description of their 
   
 Thus, the column *'MI_dir_L5_weight'* in the data set shows the weight of the recent traffic from the packet's host for L5 time-frame.
   
-The data set consists of \*.csv files, each representing a benign traffic or an attack. When I gathered \*.csv files together in one data set, I added *'botnet'* column, where I keep information about the attacks from the different botnets. The dataset contains of *combo*, *junk*, *scan*, *tcp* and *udp* Gafgyt attacks, and *ack*, *scan*, *syn*, *udp* and *udpplain* Mirai attacks. I used *'ga'* prefix for Gafgyt attacks and *'ma'* for Mirai attacks in the *'botnet'* column.
+The data set consists of \*.csv files, each representing a benign traffic or an attack. When I gathered \*.csv files together in one data set, I added *'botnet'* column, where I keep information about the attacks from the different botnets. The dataset contains *combo*, *junk*, *scan*, *tcp* and *udp* Gafgyt attacks, and *ack*, *scan*, *syn*, *udp* and *udpplain* Mirai attacks. I used *'ga'* prefix for Gafgyt attacks and *'ma'* for Mirai attacks in the *'botnet'* column.
 
-List of attacks can be found in "N-BaIoT: Network-based Detectionof IoT Botnet Attacks Using Deep Autoencoders"[^2] article.
+List of attacks can be found in "N-BaIoT: Network-based Detectionof IoT Botnet Attacks Using Deep Autoencoders"[^3] article.
 
 # Data set exploration
 
-Below I explore the data only from *Danmini doorbell* device. Because the whole dataset is huge, I'll use a sample data set that contains about 1000 rows for each botnet just for an illustrative purpose. Otherwise, all plots will be too dense.
+Below I explore the data only from *Danmini doorbell* device. Because the whole dataset is huge, I'll use a sample data set that contains about 1000 rows for each botnet just for illustrative purpose. Otherwise, plots will be too dense.
 
 ## MI stream
 
@@ -106,7 +106,7 @@ tmp %>% gather( attacks, data, -botnet ) %>%
   
 The plot shows that using only the *weight* attribute, I can easily separate **benign traffic**, **ga_tcp** and **ga_udp** attacks from the other attacks. Boxplots for **benign traffic**, **ga_tcp** and **ga_udp** shows that their medians are close to 0, they do not have large IQR, they do not have outliers. 
 
-This is more clearly seen at the small time-frames, let's view close up the *weight* attribute for L1 and L0.01 time-frames:
+This is more clearly seen at the small time-frames, let's see the close up of the *weight* attribute for L1 and L0.01 time-frames:
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height = 4}
 df %>% group_by( botnet ) %>% select (MI_dir_L1_weight ) %>% 
@@ -120,7 +120,7 @@ df %>% group_by( botnet ) %>% select (MI_dir_L0.01_weight ) %>%
   theme_minimal()
 ```
 
-The **ga_tcp** an **ga_udp** disguise themselves well as **benign traffic**. So, I have to find at least one another attribute, that can help me separate **benign traffic** from **ga_tcp** and **ga_udp** attacks.
+The **ga_tcp** and **ga_udp** disguise themselves well as **benign traffic**. Thus, I have to find at least one other attribute, that can help me separate **benign traffic** from **ga_tcp** and **ga_udp** attacks.
 
 Next, I would like to explore *mean* attribute for the same stream (MI_dir_L5_mean -  MI_dir_L0.01_mean):
 
@@ -150,7 +150,7 @@ df %>% group_by( botnet ) %>% select (MI_dir_L0.01_mean ) %>%
   theme_minimal()
 ```
   
-Some outlies for *benign traffic* have values close to those that **ga_tcp** and **ga_udp** have, and these values may confuse in separation from attacks. Thus, using only the *weight* and *mean* attributes will not help clearly separate **benign traffic** from the attacks. Therefore, I still need one more attribute that help separate *benign traffic* from the **ga_tcp** and **ga_udp** attacks. 
+Some outliers for *benign traffic* have values close to those of **ga_tcp** and **ga_udp**, and these values may interfere with separation of *benign traffic* from attacks. Thus, using only the *weight* and *mean* attributes will not help to clearly separate **benign traffic** from the attacks. Therefore, I still need one more attribute that helps separate *benign traffic* from the **ga_tcp** and **ga_udp** attacks. 
 
 Next, let's explore *variance* attribute (MI_dir_L5_variance - MI_dir_L0.01_variance) - does it provide any information for separating *benign traffic* from the attacks:
 
@@ -166,11 +166,11 @@ tmp %>% gather( attacks, data, -botnet ) %>%
   theme( axis.text.x = element_blank(), legend.position = "bottom" )
 ```
   
-This plot shows that *variance* attribute doesn't give a new information on how to separate **benign traffic** from attacks, so I can easily remove this attribute if I need to reduce the data set dimension.
+This plot shows that *variance* attribute doesn't give new information on how to separate **benign traffic** from attacks, so I can easily remove this attribute if I need to reduce the data set dimensions.
 
 ## H and HH streams
   
-Let's explore statistics for H and HH streams. In the same way as for the previous stream, I will consider *weight*, *mean* and *variance* (or *std*) attributes:
+Let's explore statistics for H and HH streams. Similarly to the previous stream, I will consider *weight*, *mean* and *variance* (or *std*) attributes:
   
 ```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height = 8}
 # Weight
@@ -219,7 +219,7 @@ tmp %>% gather( attacks, data, -botnet ) %>%
   theme( axis.text.x = element_blank(), legend.position = "bottom" )
 ```
   
-Just like plots for MI stream, all plots for H and HH streams show that I can use *weight* and *mean* attributes to separate **benign traffic** from the attacks, and remove *variance* or *std* attributes if I need to reduce the data set dimension.
+Just like plots for MI stream, all plots for H and HH streams show that I can use *weight* and *mean* attributes to separate **benign traffic** from the attacks, and remove *variance* or *std* attributes if I need to reduce the data set dimensions.
 
 ### HH stream
 
@@ -237,7 +237,7 @@ tmp %>% gather( attacks, data, -botnet ) %>%
   theme( axis.text.x = element_blank(), legend.position = "bottom" )
 ```
   
-The plot shows that *magnitude* attribute can be used for separation **benign traffic** from the attacks.
+The plot shows that *magnitude* attribute can be used to separate **benign traffic** from the attacks.
   
 ```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height = 4}
 pattern <- "H_L(0)*(.)?(0)*\\d_(rad)"
@@ -251,7 +251,7 @@ tmp %>% gather( attacks, data, -botnet ) %>%
   theme( axis.text.x = element_blank(), legend.position = "bottom" )
 ```
   
-The plot shows that *radius* attribute doesn't give any information on how to separate **benign traffic** from the attacks and can be removed if I need to reduce data set dimension.
+The plot shows that *radius* attribute doesn't give any information on how to separate **benign traffic** from the attacks and can be removed if I need to reduce data set dimensions.
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height = 4}
 pattern <- "H_L(0)*(.)?(0)*\\d_(co)"
@@ -265,7 +265,7 @@ tmp %>% gather( attacks, data, -botnet ) %>%
   theme( axis.text.x = element_blank(), legend.position = "bottom" )
 ```
   
-*Covariance* attribute can be used for separation attacks from **benign traffic**, and, probably, it's the one I've looked for.
+*Covariance* attribute can be used to separate attacks from **benign traffic**, and likely it's the one I've looked for.
   
 ```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height = 4}
 pattern <- "H_L(0)*(.)?(0)*\\d_(pcc)"
@@ -279,7 +279,7 @@ tmp %>% gather( attacks, data, -botnet ) %>%
   theme( axis.text.x = element_blank(), legend.position = "bottom" )
 ```
   
-The plot shows that, probably, *pcc* attribute can also be used for separation.
+The plot shows that *pcc* attribute can also be used for separation.
 
 ## HH_jit stream
 
@@ -301,7 +301,7 @@ These plots have no new information on how to separate **benign traffic** from a
 
 ## HpHp stream
   
-Let's have a quick look on plots for this stream:
+Let's have a quick look at plots for this stream:
   
 ```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height = 15, fig.width = 12}
 pattern <- "HpHp"
@@ -315,11 +315,11 @@ tmp %>% gather( attacks, data, -botnet ) %>%
   theme( axis.text.x = element_blank(), legend.position = "bottom" )
 ```
 
-This stream also doesn't give me the new information on how to separate **benign traffic** from the attacks.
+This stream also doesn't give me any new information on how to separate **benign traffic** from attacks.
 
 ## Data set exploration at small time frames
   
-I've noticed that all the plots have more pronounced data at the small time-frames. I would like to explore what data will give me with some attribute combinations, like *weight* vs. *mean* exactly on  these small time-frames.
+I've noticed that all the plots have more pronounced data at the small time-frames. I would like to explore which combination of attributes, for example *weight* vs. *mean*, will give me information on how to separate **benign traffic** from attacks on these small time-frames.
   
 ```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height = 4}
 df %>% ggplot( aes( MI_dir_L1_weight, MI_dir_L1_mean, color = botnet ) ) + geom_point()
@@ -335,11 +335,12 @@ df %>% ggplot( aes( HH_L0.01_mean, HH_L0.01_covariance, color = botnet ) ) + geo
 rm( df, tmp, pattern, error, colnames, data_file, data_folder, data_url, sample_size )
 ```
 
-Pair *mean-covariance* better shows how **ga_tcp** and **ga_udp** can be separated from **benign traffic**.
+*mean-covariance* pair better shows how **ga_tcp** and **ga_udp** can be separated from **benign traffic**.
 
 # Conclusion
 
-In a result, all explorations show that I can use *weight*, *mean* and *covariance* attributes to make a decision how to separate **benign traffic** from attacks, and remove other statistic attributes if I need to reduce the data set dimension.
+As a result, all explorations show that I can use *weight*, *mean* and *covariance* attributes to make a decision on how to separate **benign traffic** from attacks, and remove other statistic attributes if I need to reduce the data set dimensions.
 
 [^1]: https://archive.ics.uci.edu/ml/datasets/detection_of_IoT_botnet_attacks_N_BaIoT
-[^2]: https://arxiv.org/pdf/1805.03409.pdf, p.5
+[^2]: https://arxiv.org/pdf/1805.03409.pdf, p.3
+[^3]: https://arxiv.org/pdf/1805.03409.pdf, p.5

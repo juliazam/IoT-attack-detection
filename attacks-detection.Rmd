@@ -43,7 +43,7 @@ error_code <- 0
 
 # Error messages
 error <- c (
-  "Can't download https://github.com/juliazam/IoT-attack-detection/raw/master/data/data_10.zip. Please, download it manually and save in 'data' folder or follow instructions in https://github.com/juliazam/IoT-attack-detection/raw/master/download-data.R script."
+  "Can't download data archive from Mediafire.com. Please, visit https://www.mediafire.com/file/4z8sk6r3lov2spc/data.zip/file, copy the link to download data archive, set it as datafile_url and execute the script again."
 )
 
 # Set seed depending on R version
@@ -65,42 +65,57 @@ readData <- function() {
   # All IoT attacks data gathered in one file
   data_file <- file.path( data_folder, "data.csv" )
   
-  datafile_url <- "https://download1319.mediafire.com/jjules6qldfg/4z8sk6r3lov2spc/data.zip"
-  
-  # Please, use alternative link, if you can't download from mediafire
-  # https://www118.zippyshare.com/v/NDCWjCMp/file.html
-  #datafile_url <- "https://www118.zippyshare.com/d/NDCWjCMp/25673/data.zip"
-  
-  
   # If data file doesn't exist in local folder,download it 
   if( !file.exists( data_file ) ) {
     
-    # Try download from url
-    zipfile <- paste( data_folder, "data.zip", sep = "/" )
-    res <- download.file( datafile_url, zipfile, mode = "wb" )
-    size <- file.size( zipfile )
+    # https://www.mediafire.com/file/4z8sk6r3lov2spc/data.zip/file
+    datafile_url <- "https://download1319.mediafire.com/76p2hux2x48g/4z8sk6r3lov2spc/data.zip"
     
-    # If successfully downloaded and file size > 200MB (in bites)
-    if ( !res && size > 200000000 ) {
-      
-      print( "Unpacking downloaded archive.")
-      
-      # Unzip the data file
-      unzip( zipfile, exdir = data_folder )
-      
-    } else {
-      # Can't download file
-      error_code <<- 1
-      return()
-    }
-    # Remove archive file
-    file.remove( zipfile )
-  }
-  
+    # Please, use alternative link, if you can't download from mediafire
+    # https://www118.zippyshare.com/v/NDCWjCMp/file.html
+    # datafile_url <- "https://www118.zippyshare.com/d/NDCWjCMp/48720/data.zip"    
+    
+
+    # If folder is already exists, do not show warning
+    dir.create( data_folder, showWarnings = FALSE )
+    
+    zipfile <- paste( data_folder, "data.zip", sep = "/" )
+    
+    # Try download from url
+    tryCatch(
+      {
+        res <- download.file( datafile_url, zipfile, mode = "wb" )
+      },
+      error = function( e) {
+        # Can't download file, save error code and return
+        error_code <<- 1
+        return()
+      },
+      finally = {
+        # If data archive has been downloaded, check its size
+        size <- file.size( zipfile )
+        
+        # If successfully downloaded and file size > 200MB (in bites)
+        if ( !res && size > 200000000 ) {
+          
+          print( "Unpacking downloaded archive.")
+          
+          # Unzip the data file
+          unzip( zipfile, exdir = data_folder )
+          
+        } else {
+          # Can't download file
+          error_code <<- 1
+        }
+        # Remove archive file
+        file.remove( zipfile )
+      }
+    )
+  } 
   print( "Reading data from data file.")
   df <- read.csv( data_file, as.is = TRUE )
   
-  return( df )
+  return( df )  
 }
 
 # Read data set
@@ -114,7 +129,7 @@ The **detection_of_IoT_botnet_attacks_N_BaIoT** data set[^1] contains a traffic 
 
 The data set has 115 attributes (parameters), below is the description of their headers:
 
-1. It has 5 time-frames: L5 (1 min), L3 (10 sec), L1 (1.5 sec), L0.1 (500 ms) and L0.01 (100 ms).
+1. It has 5 time-frames: L5 (1 min), L3 (10 sec), L1 (1.5 sec), L0.1 (500 ms) and L0.01 (100 ms)[^2].
 2. The statistics extracted from each traffic stream for each time-frame:
      - *weight*: the weight of the stream (can be viewed as the number of items observed in recent history)
      - *mean*
@@ -134,86 +149,85 @@ The data set has 115 attributes (parameters), below is the description of their 
   
 Thus, the column *'MI_dir_L5_weight'* in the data set shows the weight of the recent traffic from the packet's host for L5 time-frame.
 
-I've added extra *'botnet'* column, where I keep information about the attacks from the different botnets and benign traffic. I've used "ga_" prefix for Gafgyt attacks, and "ma_" prefix for Mirai attacks. List of attacks executed and tested can be found in "N-BaIoT: Network-based Detectionof IoT Botnet Attacks Using Deep Autoencoders"[^2] article.
+I've added extra *'botnet'* column, where I keep information about attacks from the different botnets and benign traffic. I've used "ga_" prefix for Gafgyt attacks, and "ma_" prefix for Mirai attacks. List of attacks executed and tested can be found in "N-BaIoT: Network-based Detectionof IoT Botnet Attacks Using Deep Autoencoders"[^3] article.
 
 Data set structure can be found in [**"Appendix. Data set structure"**](#appendix1).
 
-The team that collected this data set used 2/3 of their benign traffic (their train set) to train their deep autoencoder. Then they used remaining 1/3 of benign traffic and all the malicious data (their test set) to detect anomalies with deep autoencoder. The detection of the cyberattacks launched from each of the above IoT devices concluded with 100% TPR.
+The team that collected this data set used 2/3 of their benign traffic (their train set) to train their *deep autoencoder*. Then they used remaining 1/3 of benign traffic and all the malicious data (their test set) to detect anomalies with *deep autoencoder*. The detection of the cyber attacks launched from each of the above IoT devices concluded with 100% TPR.
 
-In HarvardX PH125.9x Data Science course we learned several algorithms that can be used for the classification, such as **KNN**, **rpart** or **randomForest**.
+In HarvardX PH125.9x Data Science course we learned several algorithms that can be used for classification, such as **KNN**, **rpart** or **randomForest**.
 
-**My aim in this project is to check how well all these algorithms can detect anomalies (classify benign traffic or attack) in the data set, how accurate they can perform the classification.** I have no task to compare algorithms between each other.
+**My aim in this project is to check how well these algorithms can detect anomalies (classify benign traffic or attack) in the data set, how accurate can they perform classification. I have no task to compare algorithms between each other.**
 
-The source data set consists of \*.csv and \*.rar files, each representing the benign traffic or the attack, that are divided into folders with devices names[^3]. Because R has no package that can unpack \*.rar files for its own, so all \*.rar archives have to be manually unpacked with command line or third-party applications, depending on OS. Therefore, I had to prepare the data set for this project that can be easily downloaded.
+The source data set consists of \*.csv and \*.rar files, each representing the benign traffic or attack, that are divided into folders with device namess[^4]. Because R has no package that can unpack \*.rar files on its own, so all \*.rar archives have to be manually unpacked with command line or third-party applications, depending on the OS. Therefore, I had to prepare the data set for this project that can be easily downloaded.
 
-The whole data set size was more that 1TB. Nowadays it's not a problem to find a hosting to share this huge data set, but I thought that everyone who will check this project won't be happy to download it. Because the team, that collected this data set, trained and tested their autoencoder for each device separately, I decided that I can use the data only from one device for my project. I've used the data only from *Danmini doorbell* device, but the data for other devices can be downloaded from the source and prepared for the classification using provided [*download-data.R*](https://github.com/juliazam/IoT-attack-detection/blob/36ec41b9d5390995973e2961acc577f2580a7022/download-data.R) script.
+The size of the whole data set was more that 1TB. Nowadays it's not a problem to find a hosting to share this large data set, but I thought that anyone who will check this project won't be happy to download it. Because the team that collected this data set trained and tested their *deep autoencoder* for each device separately, I decided that I can use the data only from one device for my project. I've used the data only from *Danmini doorbell* device, but the data for other devices can be downloaded from the source and prepared for classification using provided [*download-data.R*](https://github.com/juliazam/IoT-attack-detection/blob/36ec41b9d5390995973e2961acc577f2580a7022/download-data.R) script.
 
-The data set for *Danmini doorbell* has the size of 970MB in *data.csv* file and only 200MB in *data.zip* archive. I used the third-party file hosting to share it, because the archive file size exceeds GitHub limits of file size that can be stored with it.
+The data set for *Danmini doorbell* has the size of 970MB in *data.csv* file and only 200MB in *data.zip* archive. I used the third-party file hosting to share it, because the archive file size exceeds GitHub limits of file size that can be stored on it.
 
-The archive file is downloading during the first time of using project's scripts and saving as *data.csv* file in a local project data folder. For the next time, saved *data.csv* file is used.
+The archive file is downloading during the first time when using project's script and saving as *data.csv* file in a local project data folder. For next time, saved *data.csv* file is used.
 
 # Dataset analisys
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE}
-# Data frame dimension
+# Data frame dimensions
 dim( df )
 ```
 
-The data set for *Danmini doorbell* device consists of more than 1 million rows. It has 115 predictors, and the 'botnet' column (116^th^) contains the outcome for the classification.
+The data set for *Danmini doorbell* device consists of more than 1 million rows. It has 115 attributes, and the 'botnet' column (116^th^) contains the outcome for the classification.
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE}
 # Column names in data frame.
 colnames <- colnames( df )
   
-# Convert 'botnet' column as factor because for most functions that used for
-# classification, the outcome should be in this format.
+# Convert 'botnet' column as factor because the outcome for classification
+# should be in this format.
 df$botnet <- as.factor( df$botnet )
   
 # How many botnets are in data set?
 nrow <- nrow( df )
-df %>% group_by( botnet ) %>% summarise( n = n(), prop = round( n / nrow, 4 ) ) 
-%>% arrange( desc( n ) )
+df %>% group_by( botnet ) %>% summarise( n = n(), prop = round( n / nrow, 4 ) ) %>% 
+  arrange( desc( n ) )
 rm (nrow )
 ```
 
 There are 11 botnets in the data set: 10 attacks plus benign traffic. Benign traffic is only 4.87% of all traffic.
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE}
-  # Plot botnets distribution
-  df %>%  select( botnet ) %>%
-    ggplot( aes( botnet, fill = as.factor( botnet ) ) ) +
-    geom_histogram( binwidth = 0.05, stat = "count" ) +
-    theme_minimal() +
-    theme( axis.text.x = element_text( angle = 60, vjust = 0.5 ) ) +
-    guides( fill = guide_legend( "Botnet")) +
-    ggtitle( "Botnets distribution" )
+# Plot botnets distribution
+df %>%  select( botnet ) %>%
+  ggplot( aes( botnet, fill = as.factor( botnet ) ) ) +
+  geom_histogram( binwidth = 0.05, stat = "count" ) +
+  theme_minimal() +
+  theme( axis.text.x = element_text( angle = 60, vjust = 0.5 ) ) +
+  guides( fill = guide_legend( "Botnet")) +
+  ggtitle( "Botnets distribution" )
 ```
 
-The full data exploration will take a lot of pages, because the whole data set has 115 predictors. So I created [*data_exploration.pdf*](https://github.com/juliazam/IoT-attack-detection/blob/36ec41b9d5390995973e2961acc577f2580a7022/data_exploration.pdf) with full data exploration. The [*data_exploration.R*](https://github.com/juliazam/IoT-attack-detection/blob/36ec41b9d5390995973e2961acc577f2580a7022/data_exploration.R) script and [*data_exploration.Rmd*](https://github.com/juliazam/IoT-attack-detection/blob/36ec41b9d5390995973e2961acc577f2580a7022/data_exploration.Rmd) Rmarkdown files also can be found on GitHub.
+The full data exploration will take a lot of pages, as the whole data set has 115 attributes, I created [*data_exploration.pdf*](https://github.com/juliazam/IoT-attack-detection/blob/36ec41b9d5390995973e2961acc577f2580a7022/data_exploration.pdf) with full data exploration. The [*data_exploration.R*](https://github.com/juliazam/IoT-attack-detection/blob/36ec41b9d5390995973e2961acc577f2580a7022/data_exploration.R) script and [*data_exploration.Rmd*](https://github.com/juliazam/IoT-attack-detection/blob/36ec41b9d5390995973e2961acc577f2580a7022/data_exploration.Rmd) Rmarkdown files can also be found on GitHub.
 
-Here I just mention my conclusion from this exploration.
+Here I will mention my conclusions from this exploration.
 
-My research has shown that I can use *weight*, *mean* and *covariance* columns only for the classification if I need to reduce the data set dimension. This is clearly visible on small time frames such as L1.
+My research has shown that I can use *weight*, *mean* and *covariance* columns for classification if I need to reduce the data set dimensions. This is clearly visible on small time frames such as L1.
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE}
-# Select MI_dir_L1_weight and MI_dir_L1_mean for an illustration
+# Select MI_dir_L1_weight and MI_dir_L1_mean for illustration
 pattern <- "MI_dir_L1_(we|me)"
   
-tmp <- df %>% select( botnet, grep( pattern = pattern, ignore.case = TRUE, 
-                                    x = colnames ) )
+tmp <- df %>% select( botnet, grep( pattern = pattern, ignore.case = TRUE, x = colnames ) )
   
 tmp %>% gather( attacks, data, -botnet ) %>% 
-ggplot( aes( botnet, data, fill = botnet ) ) +
-geom_boxplot() +
-facet_wrap( ~attacks, scales = "free", ncol = 2 ) +
-theme( axis.text.x = element_blank(), legend.position = "bottom" )
+  ggplot( aes( botnet, data, fill = botnet ) ) +
+  geom_boxplot() +
+  facet_wrap( ~attacks, scales = "free", ncol = 2 ) +
+  theme( axis.text.x = element_blank(), legend.position = "bottom" )
 ```
 
-The plot above for *MI_dir_L1_weight* column shows that almost all types of the attacks, excluding *ga_tcp* and *ga_udp*, can be separated from benign traffic, as their IQR and medians have higher values that benign traffic has. *ga_tcp* and *ga_udp* attacks camouflaging as benign traffic very well on this plot.
+The plot above for *MI_dir_L1_weight* column shows that almost all types of attacks, excluding *ga_tcp* and *ga_udp*, can be separated from benign traffic, as their IQR and medians have higher values than benign traffic. *ga_tcp* and *ga_udp* attacks camouflage very well as benign traffic on this plot.
 
-But the plot for *MI_dir_L1_mean* column shows that IQR and median is higher for benign traffic comparing with these parameters for *ga_tcp* and *ga_udp* attacks. So this column data will help to separate *ga_tcp* and *ga_udp* attacks from the benign traffic.
+However, the plot for *MI_dir_L1_mean* column shows that IQR and median is higher for benign traffic compared with these parameters for *ga_tcp* and *ga_udp* attacks. Thus, this column data will help to separate *ga_tcp* and *ga_udp* attacks from the benign traffic.
 
-Thus, as I wrote above, *weight* and *mean* columns can be used for the attacks classification. So far as all the attacks has outliers, the information these columns contain is not enough, so *covariance* column can be used also for the classification.
+Therefore, as I wrote above, *weight* and *mean* columns can be used for attack classification. As all the attacks have outliers, the information these columns contain is not enough, so *covariance* column can also be used for classification.
 
 Once again, the full data exploration can be found on GitHub:
 
@@ -225,9 +239,9 @@ Once again, the full data exploration can be found on GitHub:
 
 We have learned several methods for the data classification in HarvardX PH125.9x Data Science course, such as **KNN**, **rpart** and **randomForest**. 
 
-**rpart** and **randomForest** are easy to use algorithms because all you need to do is only to separate the data frame into two parts (train and test set) and allow function to do its work. That's why I decided to check how well **KNN** method can perform the attacks classification also. I used two approaches for **KNN** algorithm: PCA and *train()* function from *caret* package.
+**rpart** and **randomForest** are easy to use algorithms because all you need to do is to separate the data frame into two parts (train and test set) and allow functions to do their work. That's why I decided to check how well **KNN** method can perform the attack classification. I used two approaches for **KNN** algorithm: PCA and *train()* function from *caret* package.
 
-The team, that collected this data frame, used 2/3 of the benign traffic to train deep autoencoder. I can't use this approach, because all learned algorithms in the course should know all possible outcomes after training. Thus, I simply divide the data set into two equal parts (train and test sets). Anyway, my aim is only to check how accurate these algorithms are in the classification.
+The team that collected this data frame used 2/3 of the benign traffic to train *deep autoencoder*. I can't use this approach, because all learned algorithms in the course need to know all possible outcomes after training. Thus, I will simply divide the data set into two equal parts (train and test sets), as my aim is only to check how accurate these algorithms are in classification.
 
 I have
 
@@ -243,12 +257,12 @@ memory.limit()
 ```
 MB memory limit.
 
-When I tried to perform some algorithms on the whole original data set, I got memory allocation error. I decided to use only part of the original data set for these algorithms.
+When I tried to perform some algorithms on the whole original data set, I got memory allocation error. I decided to use only a part of the original data set for these algorithms.
 
 ## KNN
 ### KNN (with PCA)
 
-I use 60% of the original data set and select only columns that contain *weight* parameter. Then I separate data set into train and test sets, make them equal dimension and convert into matrices. After that I perform PCA with train set.
+I will use 60% of the original data set and select only columns that contain *weight* parameter. Then I will separate data set into train and test sets, make them equal dimensions and convert them into matrices. After that I will perform PCA with train set.
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE}
 setSeed()
@@ -257,18 +271,15 @@ setSeed()
 pattern <- "(weight)"
 
 # Select only columns that match the pattern. In this case - only 'weight' column
-tmp <- df %>% select( botnet, grep( pattern = pattern, ignore.case = TRUE, 
-                                    x = colnames ) )
+tmp <- df %>% select( botnet, grep( pattern = pattern, ignore.case = TRUE, x = colnames ) )
 
-# As I face memory limit, I use only 'prop' of data set
+# As I have memory limit, I use only 60% of the data set
 prop <- 0.6
-test_index <- createDataPartition( y = tmp$botnet, times = 1, p = prop, 
-                                   list = FALSE)
+test_index <- createDataPartition( y = tmp$botnet, times = 1, p = prop, list = FALSE)
 tmp <- tmp[ test_index, ]
 
 # Create train and test sets
-test_index <- createDataPartition( y = tmp$botnet, times = 1, p = 0.5, 
-                                   list = FALSE)
+test_index <- createDataPartition( y = tmp$botnet, times = 1, p = 0.5, list = FALSE)
 train_set <- tmp[ -test_index, ]
 test_set <- tmp[ test_index, ]
 
@@ -278,7 +289,7 @@ n_train <- nrow( train_set )
 # Number of rows in the test set
 n_test <- nrow( test_set )
 
-# Make both sets equal dimension (with equal number of rows)
+# Make both sets equal dimensions (with equal number of rows)
 if( n_test > n_train ) {
   test_set <- test_set[ 1:n_train, ]
 } else {
@@ -307,10 +318,10 @@ test_set <- test_set[ ,-1 ]
 pca <- prcomp( train_set )
 ```
 
-Next, I perform cross-validation to check how many principal components give maximum accuracy in the attack detection (classification). My previous research have shown that I can use from 10 to 20 principal components with step = 2 for cross-validation.
+Next, I will perform cross-validation to check how many principal components give maximum accuracy in attack detection (classification). My previous research have shown that I can use from 10 to 20 principal components with step = 2 for cross-validation.
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE}
-# Please, pay attention that this algorith is slow.
+# Please, pay attention that this algorithm is slow.
 
 # Make cross-validation and calculate classification accuracy
 ks <- seq( 10, 20, 2 )
@@ -359,28 +370,26 @@ results <- tibble( Method = "KNN (with PCA)",
 rm( pca, x_test, n_test, n_train, ks, accuracy, col_means, levels, bots )
 ```
 
-This method doesn't give significant result as its classification accuracy is only 79.54%. From other hand, I used only one *weight* column as a predictor.
+This method doesn't give significant result as its classification accuracy is only 79.54%. On the other hand, I used only one *weight* column for classification.
 
-I decided not to perform the classification using *weight*, *mean* and *covariance* columns with this algorithm, because even with only selected *weight* column, it works really slow (about 2hrs with my memory limit). 
+I decided not to perform classification using *weight*, *mean* and *covariance* columns with this algorithm, as even with only *weight* column, it works really slow (about 3hrs with my memory limit). 
 
 After that, I decided to use *train()* function from *caret* package to check its **KNN** method.
 
 ### KNN (with caret package)
 
-I use all 115 columns as predictors and 2% of the original data set, because of memory limit. I perform 10-fold cross-validation to find better parameters for the algorithm.
+I will use all 115 columns for classification and 2% of the original data set, because of the memory limit. I will perform 10-fold cross-validation to find better parameters for the algorithm.
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE}
 # 2. Using train() function from caret package with "knn" method
 setSeed()
   
 prop <- 0.02
-test_index <- createDataPartition( y = df$botnet, times = 1, p = prop, 
-                                   list = FALSE )
+test_index <- createDataPartition( y = df$botnet, times = 1, p = prop, list = FALSE )
 tmp <- df[ test_index, ]
 
 # Create train and test sets
-test_index <- createDataPartition( y = tmp$botnet, times = 1, p = 0.5, 
-                                   list = FALSE)
+test_index <- createDataPartition( y = tmp$botnet, times = 1, p = 0.5, list = FALSE)
 train_set <- tmp[ -test_index, ]
 test_set <- tmp[ test_index, ]
 
@@ -401,14 +410,14 @@ cm <- confusionMatrix( y_hat, test_set$botnet )
 cm$overall[ "Accuracy" ]
 ```
 
-*Sensitivity* is the quantity, referred to as the true positive rate (TPR), while the *specificity* is also called the true negative rate (TNR). Both of them show how accurate the classification was made for each attack or benign traffic.
+*Sensitivity* is the quantity, referred to as the true positive rate (TPR), while *specificity* is also called the true negative rate (TNR). Both of them show how accurate the classification was made for each attack or benign traffic.
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE}
 # Check sensitivity and specificity
 cm$byClass[ ,1:2 ]
 ```
 
-We have learned in the course, that k=1 may lead to overtraining, because each row in the data set was used to predict itself. In case of cyber attacks classification, I think, its reasonable to use k=1 for the higher accuracy. It's always better do not allow the attack to infect IoT device. The team that collected this data set used only benign traffic to train their autoencoder, and this spproach seams similar to use k=1 in **KNN** method.
+We have learned in the course, that k=1 may lead to over-training, because each row in the data set is used to predict itself. In this particular case, it's reasonable, in my opinion, because the team that collected the data set used a  similar approach. They used only *benign traffic* to train their *deep autoencoder*, this is pretty close to use of k=1 in **KNN** method. Furthermore, data exploration has shown that some attribute combinations (such as *weight*, *mean* and *covariance*) can help to clearly separate *benign traffic* from the attacks, and thus, even with k=1 it becomes possible to make great classification.
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE}
 # Save this result
@@ -422,25 +431,22 @@ results <- add_row( .data = results,
 rm (fit_knn)
 ```
 
-My next step is to reduce the original data set dimension keeping only *weight*, *mean* and *covariance* columns for L1 and L0.01 time frames. This step will allow me to use 20% of the original data set with my memory limit.
+My next step is to reduce the original data set dimensions, keeping only *weight*, *mean* and *covariance* columns for L1 and L0.01 time frames. This step will allow me to use 20% of the original data set with my memory limit.
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE}
-# 3. Let's reduce data set dimension and increase data set size for classification
-# 20% of data (because of memory limit), 24 predictors
+# 3. Let's reduce the data set dimensions and increase its size
+# 20% of data (because of memory limit), 24 attributes
 setSeed()
 
 prop <- 0.2
-test_index <- createDataPartition( y = df$botnet, times = 1, p = prop, 
-                                   list = FALSE )
+test_index <- createDataPartition( y = df$botnet, times = 1, p = prop, list = FALSE )
 tmp <- df[ test_index, ]
 
 pattern <- "L(0.0)?1_(weight|mean|covariance)"
-tmp <- tmp %>% select( botnet, grep( pattern = pattern, 
-                                     ignore.case = TRUE, x = colnames ) )
+tmp <- tmp %>% select( botnet, grep( pattern = pattern, ignore.case = TRUE, x = colnames ) )
 
-# Separate to train and test sets
-test_index <- createDataPartition( y = tmp$botnet, times = 1, p = 0.5, 
-                                   list = FALSE)
+# Create train and test sets
+test_index <- createDataPartition( y = tmp$botnet, times = 1, p = 0.5, list = FALSE)
 train_set <- tmp[ -test_index, ]
 test_set <- tmp[ test_index, ]
 
@@ -453,7 +459,7 @@ fit_knn2 <- train( botnet ~ ., data = train_set, method = "knn",
 ggplot( fit_knn2, highlight = TRUE )
 ```
 
-```{r echo = FALSE, message = FALSE, warning = FALSE}
+```{r echo = TRUE, message = FALSE, warning = FALSE}
 y_hat <- predict( fit_knn2, test_set, type = "raw" ) 
 cm <- confusionMatrix( y_hat, test_set$botnet )
 cm$overall[ "Accuracy" ]
@@ -469,7 +475,7 @@ cm$byClass[ , 1:2 ]
 
 # Save this result
 results <- add_row( .data = results,
-                    Method = "KNN (with caret package, reduced data)", 
+                    Method = "KNN (with caret, reduced data)", 
                     Predictors = paste( ncol( tmp ) - 1, " (L1, L0.01)", 
                                         sep = "," ),
                     Data_proportion = prop,  
@@ -481,12 +487,12 @@ rm( control, pattern, fit_knn2, y_hat )
 
 ## rpart
 
-This method allows to use all 115 predictors and whole original data set even with my memory limit.
+This method allows the use all 115 attributes and whole original data set even with my memory limit.
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE}
 setSeed()
 
-# Use all data set with all predictors
+# Use whole data set with all attributes
 tmp <- df
 
 # Create train and test sets
@@ -497,23 +503,23 @@ test_set <- tmp[ test_index, ]
 fit_rpart <- rpart( botnet ~ ., data = train_set )
 ```
 
-Visualize a decision tree:
+Visualize the decision tree:
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height = 9}
 # Visualize decision tree
-plot( fit_rpart, margin = 0.1, main="rpart decision tree")
-text( fit_rpart, cex = 0.75)
+plot( fit_rpart, margin = 0.1, main="rpart decision tree" )
+text( fit_rpart, cex = 0.75 )
 ```
 
-According to the decision tree above, **rpart** mostly uses *mean* column and sometimes makes its decision using *weight* and *covariance* columns. The data exploration also has shown that using only *weight*, *mean* and *covariance* columns will be enough to detect attacks (make their classification).
+According to the decision tree above, **rpart** mostly uses *mean* column and sometimes makes its decisions using *weight* and *covariance* columns. The data exploration also has shown that using only *weight*, *mean* and *covariance* columns will be enough to detect attacks (make their classification).
 
-```{r echo = FALSE, message = FALSE, warning = FALSE}
+```{r echo = TRUE, message = FALSE, warning = FALSE}
 y_hat <- predict( fit_rpart, test_set, type = "class" ) 
 cm <- confusionMatrix( y_hat, as.factor(test_set$botnet ) )
 cm$overall[ "Accuracy" ]
 ```
 
-The accuracy of the attack detection (classification) using **rpart** methos is not so high and about 98.66%.
+The accuracy of the attack detection (classification) using **rpart** method is not as high and is about 98.66%.
 
 Check *sensitivity* and *specificity* for each attack or benign traffic:
 
@@ -534,7 +540,7 @@ rm( y_hat, fit_rpart, cm )
 
 ## randomForest
 
-The method builds a lot of trees for each forest, so the computation time will be considerable. I use only 10% of the original data set, because of memory limit.
+The method builds a lot of trees for each forest, so the computation time will be considerable. I will use only 10% of the original data set, because of the memory limit.
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE}
 setSeed()
@@ -542,7 +548,7 @@ prop <- 0.1
 test_index <- createDataPartition( y = df$botnet, times = 1, p = prop, list = FALSE )
 tmp <- df[ test_index, ]
 
-# Separate to train and test sets
+# Create train and test sets
 test_index <- createDataPartition( y = tmp$botnet, times = 1, p = 0.5, list = FALSE )
 train_set <- tmp[ -test_index, ]
 test_set <- tmp[ test_index, ]
@@ -553,14 +559,14 @@ cm <- confusionMatrix( y_hat, test_set$botnet )
 cm$overall[ "Accuracy" ]
 ```
 
-The accuracy of the classification (attack detection) is 99.98%! It's really significant result!
+The accuracy of the classification (attack detection) is 99.98%! It really is a significant result!
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE}
 # Check sensitivity and specificity
 cm$byClass[ ,1:2 ]
 ```
 
-The *sensitivity* shows that the method has 100% TPR in some attack detection or close to 100% for other attacks. This result corralates with the result, that was obtained by the team that collected the original data set!
+*sensitivity* shows that the method has 100% TPR in some attack detection or close to 100% for other attacks. This result correlates with the result that was obtained by the team that collected the original data set!
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE}
 # Save this result
@@ -572,13 +578,13 @@ results <- add_row( .data = results,
                     Accuracy = cm$overall[ "Accuracy" ] )
 ```
 
-It will be interesting to visualize at least one decision tree from the 'forest'. The *randomForest* package has no tool for visualization, but the decision tree can be visualized using method described in *"Plotting trees from Random Forest models with ggraph"*[^4] article.
+It will be interesting to visualize at least one decision tree from the 'forest'. **randomForest** package has no tool for visualization, however, the decision tree can be visualized using method described in *"Plotting trees from Random Forest models with ggraph"*[^5] article.
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE, fig.height= 16, fig.width = 8}
 treeNum <- min( fit_rm$forest$ndbigtree )
 tree <- getTree( fit_rm, k = treeNum, labelVar = TRUE) %>% 
   as.data.frame() %>% rownames_to_column( var = "tree" ) %>%
-  mutate(`split point` = ifelse(is.na(prediction), `split point`, NA))
+  mutate(`split point` = ifelse( is.na( prediction ), `split point`, NA ) )
 
 # prepare data frame for graph
 graph_frame <- data.frame( from = rep( tree$tree, 2 ),
@@ -618,45 +624,47 @@ decisionTree
 ```
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE}
-rm( tree, treeNum, plot, fit_rm, graph, graph_frame, y_hat, cm, prop, df,
-      tmp, test_index, train_set, test_set )
+rm( tree, treeNum, decisionTree, fit_rm, graph, graph_frame, y_hat, cm, prop, tmp, 
+    test_index, train_set, test_set )
 ```
 
 # Result
 
-I've checked how accurate **KNN**, **rpart** and **randomForest** methods can detect the cyber attacks. Here is the final result:
+I've checked how accurate **KNN**, **rpart** and **randomForest** methods are in detecting the cyber attacks. Here is the final result:
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE}
 results
 ```
 
-As seen from the result table, *randomForest* method gives 100% accuracy in the attack classification. It also gives 100% TPR in detecting benign traffic and some attacks. But for other attacks it gives TPR less that 100% (but close). This means that it can't detect some attacks and may consider them as *benign traffic*. This is not good for security reason.
+As seen from the result table, **randomForest** method gives 100% accuracy in classification. It also gives 100% TPR in detecting either *benign traffic* or some attacks. But for other attacks, it gives TPR ~ 99.7%. Unfortunately, this means it can detect some attacks as *benign traffic*. For security reason it's not as good. I found that the result highly correlates with the result that the team that collected the data set got.
 
-However, the result, I gained by this method, highly correlate with the result that got the team that collected this data set.
+**rpart** method uses all 115 attributes and whole data set to make its decision tree, works fast, but its classification accuracy is 98.7%.
 
-**rpart** method uses all 115 predictors and whole data set to make its decision tree, works fast, but its classification accuracy is only 98.7%.
-
-**KNN* method on reduced data set gives the classification accuracy about 99.5%.
+**KNN** method on *reduced* data set gives the classification accuracy of about 99.5%.
 
 # Conclusion
 
-The team that collected the original data set, got 100% TPR in detecting cyber attacks. The methods we learned in HarvardX PH125.9x Data Science course are in no way inferior in the attack detection accuracy with some memory or time limits. 
+The methods we learned in HarvardX PH125.9x Data Science course give great accuracy in the attack detection with some memory or time limits. **randomForest** method gives 100% accuracy in attack classification and 100% TPR in *benign traffic* detection. The team that collected the original data set got 100% TPR in detecting cyber attacks.
 
-*randomForest* method gives 100% accuracy in attack classification and 100% TPR in *benign traffic* detection. It may consider some attacks as *benign traffic*, but after detecting *benign traffic* with 100% TPR, we may consider other traffic as the attacks.
+I divided the data set into two parts: train and test sets, because the methods we learned in the course have to know all possible outcomes after training. The team used  *benign traffic* to train their deep autodecoder. 
 
-The team used only *benign traffic* to train their deep autodecoder. I can't use this approach with methods we learned in the course, because they have to know all the possible outcomes after training. That's why I simply divided the data set into two parts: train and test sets.
+I have memory limit of 8GB on my laptop with 4.0.2 R version. This limit allowed me to use 10% of the original data set to check the classification accuracy for **randomForest** method. I also checked this method on a computer with 4.0.4 R version and 32GB of memory limit. This memory limit allowed to use 60% of the original data set.
 
-I have memory limit of 8GB on my laptop with 4.0.2 R version. This limit allowed me to use 10% of the original data set to check the classification accuracy for *randomForest* method. However, I checked also this method on a computer with 4.0.4 R version and 32GB of memory limit. This memory limit allowed to use 60% of the original data set.
+The aim that I set for my project, namely, to check how accurate the methods we learned in the course in detecting attacks, has been achieved.
 
-The aim that I set for my project, namely, to check with what accuracy the methods, we learned in the course, can detect attacks, has been achieved.
+However, if I were to further engage in the cyber attack detection, then I would choose **randomForest** method and would explore at least two ways:
 
-However, if I were further engaged in the cyber attack detection, then I would choose **randomForest** method and would take the following steps:
+1. **randomForest** classifies some attack with TPR less than 100%. This means, that it may consider some attacks as *benign traffic* and may pass them. That's inappropriate for the security reasons.
 
-1. Set up higher memory limit
-2. Check with varImp() function what columns are important for **randomForest** method to create its decision trees.
-3. Reduce the data set dimension using variable importance.
+Knowing that it detects *benign traffic* with 100% TPR, I may consider other traffic as attacks and reject it. Perhaps, I need to reshape the data set, only keeping  *benign traffic* or *attack* values in *botnet* column, i.e. having only two possible outcomes. In this case **randomForest** may clearly separate *benign traffic* from the attacks, I suppose.
 
-All these steps will allow me to use all rows of the original data set. So far as **randomForest** method gives 100% accuracy in attack detection even on 10% of the original data set, all these steps above will not increase its accuracy. However, these steps can increase *sensitivity*  in the attack detection.
+2. Perform following steps to increase the data set size to use with **randomForest** method:
+
+* Use higher spec PC to increase memory
+* Arrange attributes by their importance for the method
+* Reduce the data set by removing less important attributes
+
+Steps above will allow me to use all the rows of the original data set and check if this increases *sensitivity* in the attack detection and keeps the accuracy high.
 
 # Apendix
 
@@ -666,7 +674,12 @@ All these steps will allow me to use all rows of the original data set. So far a
 str( df )
 ```
 
+```{r echo = FALSE, message = FALSE, warning = FALSE}
+rm( df, results )
+```
+
 [^1]: https://archive.ics.uci.edu/ml/datasets/detection_of_IoT_botnet_attacks_N_BaIoT
-[^2]: https://arxiv.org/pdf/1805.03409.pdf, p.5
-[^3]: https://archive.ics.uci.edu/ml/machine-learning-databases/00442
-[^4]: https://shiring.github.io/machine_learning/2017/03/16/rf_plot_ggraph
+[^2]: https://arxiv.org/pdf/1805.03409.pdf, p.3
+[^3]: https://arxiv.org/pdf/1805.03409.pdf, p.5
+[^4]: https://archive.ics.uci.edu/ml/machine-learning-databases/00442
+[^5]: https://shiring.github.io/machine_learning/2017/03/16/rf_plot_ggraph
