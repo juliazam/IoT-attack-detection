@@ -69,11 +69,11 @@ readData <- function() {
   if( !file.exists( data_file ) ) {
     
     # https://www.mediafire.com/file/4z8sk6r3lov2spc/data.zip/file
-    datafile_url <- "https://download1319.mediafire.com/76p2hux2x48g/4z8sk6r3lov2spc/data.zip"
+    datafile_url <- "https://download1319.mediafire.com/0fjwjwv25qmg/4z8sk6r3lov2spc/data.zip"
     
     # Please, use alternative link, if you can't download from mediafire
     # https://www118.zippyshare.com/v/NDCWjCMp/file.html
-    # datafile_url <- "https://www118.zippyshare.com/d/NDCWjCMp/48720/data.zip"    
+    # datafile_url <- "https://www118.zippyshare.com/d/NDCWjCMp/18389/data.zip"    
     
 
     # If folder is already exists, do not show warning
@@ -157,9 +157,9 @@ The team that collected this data set used 2/3 of their benign traffic (their tr
 
 In HarvardX PH125.9x Data Science course we learned several algorithms that can be used for classification, such as **KNN**, **rpart** or **randomForest**.
 
-**My aim in this project is to check how well these algorithms can detect anomalies (classify benign traffic or attack) in the data set, how accurate can they perform classification. I have no task to compare algorithms between each other.**
+**My aim in this project is to check how well these algorithms can detect anomalies (classify benign traffic or attack) in the data set, how accurate can they perform classification. I have no intention to compare algorithms between each other.**
 
-The source data set consists of \*.csv and \*.rar files, each representing the benign traffic or attack, that are divided into folders with device namess[^4]. Because R has no package that can unpack \*.rar files on its own, so all \*.rar archives have to be manually unpacked with command line or third-party applications, depending on the OS. Therefore, I had to prepare the data set for this project that can be easily downloaded.
+The source data set consists of \*.csv and \*.rar files, each representing the benign traffic or attack, that are divided into folders with device names[^4]. Because R has no package that can unpack \*.rar files on its own, so all \*.rar archives have to be manually unpacked with command line or third-party applications, depending on the OS. Therefore, I had to prepare the data set for this project that can be easily downloaded.
 
 The size of the whole data set was more that 1TB. Nowadays it's not a problem to find a hosting to share this large data set, but I thought that anyone who will check this project won't be happy to download it. Because the team that collected this data set trained and tested their *deep autoencoder* for each device separately, I decided that I can use the data only from one device for my project. I've used the data only from *Danmini doorbell* device, but the data for other devices can be downloaded from the source and prepared for classification using provided [*download-data.R*](https://github.com/juliazam/IoT-attack-detection/blob/36ec41b9d5390995973e2961acc577f2580a7022/download-data.R) script.
 
@@ -475,8 +475,8 @@ cm$byClass[ , 1:2 ]
 
 # Save this result
 results <- add_row( .data = results,
-                    Method = "KNN (with caret, reduced data)", 
-                    Predictors = paste( ncol( tmp ) - 1, " (L1, L0.01)", 
+                    Method = "KNN (caret, reduced data)", 
+                    Predictors = paste( ncol( tmp ) - 1, "(L1,L0.01)", 
                                         sep = "," ),
                     Data_proportion = prop,  
                     Parameters = paste( "k", fit_knn2$bestTune , sep = " = " ),
@@ -566,7 +566,7 @@ The accuracy of the classification (attack detection) is 99.98%! It really is a 
 cm$byClass[ ,1:2 ]
 ```
 
-*sensitivity* shows that the method has 100% TPR in some attack detection or close to 100% for other attacks. This result correlates with the result that was obtained by the team that collected the original data set!
+*Sensitivity* shows that the method has 100% TPR in some attack detection or close to 100% for other attacks. This result correlates with the result that was obtained by the team that collected the original data set!
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE}
 # Save this result
@@ -665,6 +665,8 @@ Knowing that it detects *benign traffic* with 100% TPR, I may consider other tra
 * Reduce the data set by removing less important attributes
 
 Steps above will allow me to use all the rows of the original data set and check if this increases *sensitivity* in the attack detection and keeps the accuracy high.
+
+Another task that smoothly follows from my project is to compare the methods between each other. To do this, I need to find the minimum data set on which all methods can work. Then I can compare their execution speed  and classification accuracy.
 
 # Apendix
 

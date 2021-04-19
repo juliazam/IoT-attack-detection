@@ -74,11 +74,11 @@ readData <- function() {
   if( !file.exists( data_file ) ) {
     
     # https://www.mediafire.com/file/4z8sk6r3lov2spc/data.zip/file
-    datafile_url <- "https://download1319.mediafire.com/76p2hux2x48g/4z8sk6r3lov2spc/data.zip"
+    datafile_url <- "https://download1319.mediafire.com/0fjwjwv25qmg/4z8sk6r3lov2spc/data.zip"
     
     # Please, use alternative link, if you can't download from mediafire
     # https://www118.zippyshare.com/v/NDCWjCMp/file.html
-    # datafile_url <- "https://www118.zippyshare.com/d/NDCWjCMp/48720/data.zip"    
+    # datafile_url <- "https://www118.zippyshare.com/d/NDCWjCMp/18389/data.zip"    
     
 
     # If folder is already exists, do not show warning
