@@ -74,7 +74,7 @@ readData <- function() {
   if( !file.exists( data_file ) ) {
     
     # https://www.mediafire.com/file/4z8sk6r3lov2spc/data.zip/file
-    datafile_url <- "https://download1319.mediafire.com/0fjwjwv25qmg/4z8sk6r3lov2spc/data.zip"
+    datafile_url <- "https://download1319.mediafire.com/b06lmltts1ug/4z8sk6r3lov2spc/data.zip"
     
     # Please, use alternative link, if you can't download from mediafire
     # https://www118.zippyshare.com/v/NDCWjCMp/file.html
